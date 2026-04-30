@@ -1,0 +1,51 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: jobmatching
+      POSTGRES_USER: jobmatching
+      POSTGRES_PASSWORD: jobmatching
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jobmatching"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    ports:
+      - "8889:8889"
+    environment:
+      DJANGO_SECRET_KEY: dev-secret-key-change-in-production
+      DJANGO_DEBUG: "True"
+      ALLOWED_HOSTS: localhost
+      POSTGRES_DB: jobmatching
+      POSTGRES_USER: jobmatching
+      POSTGRES_PASSWORD: jobmatching
+      POSTGRES_HOST: db
+      POSTGRES_PORT: "5432"
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    volumes:
+      - ./backend:/app
+    depends_on:
+      db:
+        condition: service_healthy
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py runserver 0.0.0.0:8889"
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "7778:5173"
+    environment:
+      VITE_API_URL: http://localhost:8889
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    command: npm run dev -- --host
+
+volumes:
+  postgres_data:

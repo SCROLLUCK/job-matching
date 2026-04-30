@@ -1,0 +1,14 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+venv/
+.env
+
+# Node
+node_modules/
+dist/
+
+# Docker
+postgres_data/
