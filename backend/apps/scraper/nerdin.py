@@ -11,8 +11,10 @@ HEADERS = {
 
 
 def _parse_salary(text):
-    cleaned = text.replace(".", "").replace(",", "").replace("R$", "").strip()
-    nums = [int(n) for n in re.findall(r"\d+", cleaned) if int(n) > 100]
+    # Remove Brazilian decimal part (e.g. ",00" or ",50") before stripping separators
+    text = re.sub(r",\d{2}\b", "", text)
+    cleaned = text.replace(".", "").replace("R$", "").replace("Até", "").replace("até", "").strip()
+    nums = [int(n) for n in re.findall(r"\d+", cleaned) if int(n) > 500]
     if len(nums) >= 2:
         return nums[0], nums[1]
     if len(nums) == 1:
@@ -42,27 +44,63 @@ def _detect_contract(text):
     return "unknown"
 
 
+def _detect_level(text):
+    lower = text.lower()
+    if any(k in lower for k in ["sênior", "senior", "sr.", "nível: senior", "nível: sênior"]):
+        return "senior"
+    if any(k in lower for k in ["pleno", "mid", "pl.", "nível: pleno"]):
+        return "mid"
+    if any(k in lower for k in ["júnior", "junior", "jr.", "estagiário", "nível: júnior", "nível: junior"]):
+        return "junior"
+    return "unknown"
+
+
 def _fetch_detail(url):
-    """Returns (description, contract_type) from the job detail page."""
+    """Returns dict with description, contract_type, experience_level, work_mode, salary_min, salary_max."""
+    result = {"description": "", "contract_type": "unknown", "experience_level": "unknown",
+              "work_mode": None, "salary_min": None, "salary_max": None}
     try:
         resp = requests.get(url, headers=HEADERS, timeout=10)
         if resp.status_code != 200:
-            return "", "unknown"
+            return result
         soup = BeautifulSoup(resp.text, "lxml")
         tab = soup.find("div", class_="tab-content")
         if not tab:
-            return "", "unknown"
+            return result
         full_text = tab.get_text("\n", strip=True)
-        # Strip noise before the actual description
-        description = full_text
+
+        # Extract description (everything from first content marker)
         for marker in ["Sobre a Vaga", "Descrição da vaga", "Descrição"]:
             idx = full_text.find(marker)
             if idx != -1:
-                description = full_text[idx:].strip()
+                result["description"] = full_text[idx:idx + 3000].strip()
                 break
-        return description[:3000], _detect_contract(full_text)
+
+        result["contract_type"] = _detect_contract(full_text)
+        result["experience_level"] = _detect_level(full_text)
+
+        # Work mode from detail page overrides listing (more accurate)
+        work_mode, _ = _parse_work_mode(full_text)
+        if work_mode != "onsite" or "híbrido" in full_text.lower() or "remoto" in full_text.lower():
+            result["work_mode"] = work_mode
+
+        # Try salary from "Faixa salarial:" line (Benefícios tab) first
+        sal_match = re.search(r"[Ff]aixa salarial[:\s]+([^\n]+)", full_text)
+        if sal_match:
+            sal_min, sal_max = _parse_salary(sal_match.group(1))
+            if sal_min:
+                result["salary_min"], result["salary_max"] = sal_min, sal_max
+
+        # Fallback: first line of tab-content is always the salary display value
+        if not result["salary_min"]:
+            first_line = full_text.split("\n")[0].strip()
+            sal_min, sal_max = _parse_salary(first_line)
+            if sal_min:
+                result["salary_min"], result["salary_max"] = sal_min, sal_max
+
     except Exception:
-        return "", "unknown"
+        pass
+    return result
 
 
 def _parse_card(card):
@@ -120,9 +158,17 @@ def fetch_jobs(pages=3):
         for card in cards:
             job = _parse_card(card)
             if job:
-                description, contract_type = _fetch_detail(job["url"])
-                job["description"] = description
-                if contract_type != "unknown":
-                    job["contract_type"] = contract_type
+                detail = _fetch_detail(job["url"])
+                job["description"] = detail["description"]
+                if detail["contract_type"] != "unknown":
+                    job["contract_type"] = detail["contract_type"]
+                if detail["experience_level"] != "unknown":
+                    job["experience_level"] = detail["experience_level"]
+                if detail["work_mode"] is not None:
+                    job["work_mode"] = detail["work_mode"]
+                    job["is_remote"] = detail["work_mode"] == "remote"
+                if detail["salary_min"] and not job["salary_min"]:
+                    job["salary_min"] = detail["salary_min"]
+                    job["salary_max"] = detail["salary_max"]
                 jobs.append(job)
     return jobs

@@ -6,12 +6,14 @@ const SOURCE_LABELS: Record<string, string> = {
   linkedin: "LinkedIn",
   nerdin: "Nerdin",
   geekhunter: "GeekhHunter",
+  indeed: "Indeed",
 };
 
 const SOURCE_COLORS: Record<string, string> = {
   linkedin: "bg-blue-100 text-blue-700",
   nerdin: "bg-purple-100 text-purple-700",
   geekhunter: "bg-green-100 text-green-700",
+  indeed: "bg-orange-100 text-orange-700",
 };
 
 function salaryLabel(min: number | null, max: number | null): string {

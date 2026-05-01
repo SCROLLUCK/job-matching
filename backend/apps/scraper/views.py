@@ -5,7 +5,7 @@ from django.utils import timezone
 from apps.jobs.models import Job
 from apps.jobs.ranker import score_job
 from apps.profile.models import UserProfile
-from . import nerdin, linkedin, geekhunter
+from . import nerdin, linkedin, geekhunter, indeed
 
 
 def _save_jobs(job_list):
@@ -50,7 +50,7 @@ def _save_jobs(job_list):
 
 class ScrapeView(APIView):
     def post(self, request):
-        sources = request.data.get("sources", ["linkedin", "nerdin", "geekhunter"])
+        sources = request.data.get("sources", ["linkedin", "nerdin", "geekhunter", "indeed"])
         results = {}
 
         if "nerdin" in sources:
@@ -73,6 +73,13 @@ class ScrapeView(APIView):
                 results["geekhunter"] = _save_jobs(jobs)
             except Exception as e:
                 results["geekhunter_error"] = str(e)
+
+        if "indeed" in sources:
+            try:
+                jobs = indeed.fetch_jobs(pages=3)
+                results["indeed"] = _save_jobs(jobs)
+            except Exception as e:
+                results["indeed_error"] = str(e)
 
         results["scraped_at"] = timezone.now().isoformat()
         return Response(results)

@@ -22,7 +22,7 @@ services:
     environment:
       DJANGO_SECRET_KEY: dev-secret-key-change-in-production
       DJANGO_DEBUG: "True"
-      ALLOWED_HOSTS: localhost
+      ALLOWED_HOSTS: localhost,job-matching.local
       POSTGRES_DB: jobmatching
       POSTGRES_USER: jobmatching
       POSTGRES_PASSWORD: jobmatching
@@ -44,7 +44,7 @@ services:
     ports:
       - "7778:5173"
     environment:
-      VITE_API_URL: http://localhost:8889
+      VITE_API_URL: http://job-matching.local:8889
     volumes:
       - ./frontend:/app
       - /app/node_modules

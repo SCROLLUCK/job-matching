@@ -18,8 +18,11 @@ export default function App() {
   const [scraping, setScraping] = useState(false);
   const { toast, showToast, clearToast } = useToast();
 
+  const refreshApplied = () => fetchJobs({ application_status: "applied" }).then(setAppliedJobs);
+
   useEffect(() => {
     fetchProfile().then(setProfile);
+    refreshApplied();
   }, []);
 
   useEffect(() => {
@@ -31,9 +34,7 @@ export default function App() {
   }, [filters]);
 
   useEffect(() => {
-    if (tab === "applied") {
-      fetchJobs({ application_status: "applied" }).then(setAppliedJobs);
-    }
+    if (tab === "applied") refreshApplied();
   }, [tab]);
 
   async function handleScrape() {
@@ -75,7 +76,7 @@ export default function App() {
                 onClick={() => setTab("applied")}
                 className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${tab === "applied" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
               >
-                Applied
+                Applied {appliedJobs.length > 0 && <span className="ml-1 text-xs text-gray-400">({appliedJobs.length})</span>}
               </button>
               <button
                 onClick={() => setTab("profile")}

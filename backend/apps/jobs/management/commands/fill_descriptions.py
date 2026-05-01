@@ -1,6 +1,7 @@
 from django.core.management.base import BaseCommand
 from apps.jobs.models import Job
 from apps.scraper import nerdin, linkedin
+from apps.scraper.linkedin import _extract_tech_stack
 
 
 class Command(BaseCommand):
@@ -23,6 +24,9 @@ class Command(BaseCommand):
             if desc:
                 job.description = desc
                 fields.append("description")
+                if job.source == "linkedin" and not job.tech_stack:
+                    job.tech_stack = _extract_tech_stack(desc)
+                    fields.append("tech_stack")
             if contract_type != "unknown" and job.contract_type == "unknown":
                 job.contract_type = contract_type
                 fields.append("contract_type")

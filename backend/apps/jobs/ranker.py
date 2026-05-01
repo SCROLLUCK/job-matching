@@ -14,15 +14,19 @@ def score_job(job_data: dict, profile) -> dict:
     if job_data.get("salary_min") and job_data.get("salary_max"):
         salary_info = f"R${job_data['salary_min']:,} - R${job_data['salary_max']:,}"
 
-    desired_salary = "Not specified"
-    if profile.desired_salary_min and profile.desired_salary_max:
-        desired_salary = f"R${profile.desired_salary_min:,} - R${profile.desired_salary_max:,}"
+    desired_salary_min = "Not specified"
+    desired_salary_max = "Not specified"
+    if profile.desired_salary_min:
+        desired_salary_min = f"R${profile.desired_salary_min:,}/month"
+    if profile.desired_salary_max:
+        desired_salary_max = f"R${profile.desired_salary_max:,}/month"
 
     prompt = f"""Score this job opening from 0.0 to 10.0 based on compatibility with the candidate profile.
 
 CANDIDATE PROFILE:
 - Tech stack: {', '.join(profile.tech_stack) or 'Not specified'}
-- Desired salary: {desired_salary}
+- Minimum acceptable salary: {desired_salary_min}
+- Maximum desired salary: {desired_salary_max}
 - Contract preference: {profile.preferred_contract_type}
 - Work mode preference: {profile.preferred_work_mode}
 - Preferred roles: {', '.join(profile.preferred_roles) or 'Not specified'}
@@ -35,11 +39,14 @@ JOB OPENING:
 - Salary: {salary_info}
 - Contract: {job_data.get('contract_type', 'unknown')}
 - Work mode: {job_data.get('work_mode', 'unknown')}
-- Description: {job_data.get('description', '')[:600]}
+- Description: {job_data.get('description', '')[:2000]}
 
 Scoring rules — apply strictly:
-- If the job does NOT specify a value for a criterion (salary, contract, work mode, tech stack), score that criterion 0.0.
-- Only score a criterion above 0 if the job explicitly provides that information.
+- stack_match: use BOTH the "Tech stack" field AND any technologies mentioned in the description. If neither lists any technology, score 0.0.
+- salary_match: score 0.0 if no salary is specified. If salary is specified: compare against "Minimum acceptable salary" in the profile. Score 10.0 if job salary >= minimum acceptable salary. Score proportionally lower only if job salary is BELOW the minimum acceptable salary. Paying above the maximum desired salary is still 10.0 — never penalize for paying too much.
+- work_mode_match: score 0.0 if work mode is "unknown".
+- contract_match: score 0.0 if contract is "unknown".
+- role_match: always score based on title and description — never 0.0 unless completely unrelated.
 - The overall score is the average of all five criteria.
 
 Return ONLY valid JSON, no other text:

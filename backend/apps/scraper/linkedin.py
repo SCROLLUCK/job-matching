@@ -35,6 +35,32 @@ def _detect_level(title):
 
 DETAIL_URL = "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/{job_id}"
 
+KNOWN_TECHS = [
+    "python", "django", "fastapi", "flask", "node", "node.js", "express", "nestjs",
+    "react", "react native", "next.js", "nextjs", "vue", "angular", "svelte",
+    "typescript", "javascript", "html", "html5", "css", "css3", "bootstrap", "tailwind",
+    "java", "spring", "kotlin", "scala", "go", "golang", "rust", "c#", ".net", "asp.net",
+    "c++", "c", "php", "laravel", "ruby", "rails",
+    "sql", "mysql", "postgresql", "postgres", "sqlite", "sql server", "oracle", "mongodb",
+    "redis", "elasticsearch", "dynamodb", "firebase",
+    "docker", "kubernetes", "aws", "azure", "gcp", "terraform", "ansible",
+    "git", "github", "gitlab", "ci/cd", "jenkins",
+    "graphql", "rest", "grpc", "kafka", "rabbitmq",
+    "linux", "bash", "shell", "nginx",
+    "power bi", "power platform", "power apps", "vba", "excel",
+    "figma", "photoshop",
+]
+
+
+def _extract_tech_stack(text):
+    lower = text.lower()
+    found = []
+    for tech in KNOWN_TECHS:
+        pattern = r'\b' + re.escape(tech) + r'\b'
+        if re.search(pattern, lower):
+            found.append(tech)
+    return found
+
 
 def _detect_contract(text):
     lower = text.lower()
@@ -123,6 +149,8 @@ def fetch_jobs(keywords="desenvolvedor", location="Brazil", pages=3):
                 job["description"] = description
                 if contract_type != "unknown":
                     job["contract_type"] = contract_type
+                if description:
+                    job["tech_stack"] = _extract_tech_stack(description)
                 jobs.append(job)
         if not items:
             break

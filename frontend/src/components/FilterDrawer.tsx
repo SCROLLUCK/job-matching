@@ -54,6 +54,7 @@ export default function FilterDrawer({ filters, onChange }: Props) {
         { value: "linkedin", label: "LinkedIn" },
         { value: "nerdin", label: "Nerdin" },
         { value: "geekhunter", label: "GeekhHunter" },
+        { value: "indeed", label: "Indeed" },
       ]} />
 
       <Select label="Contract" value={filters.contract_type ?? ""} onChange={set("contract_type")} options={[
