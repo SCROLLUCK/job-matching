@@ -6,20 +6,24 @@ JOBS_URL = f"{BASE_URL}/vagas"
 
 def _detect_work_mode(text):
     lower = text.lower()
-    if "remoto" in lower or "remote" in lower:
-        return "remote", True
+    if "remoto" in lower or "remote" in lower or "home office" in lower:
+        return "remote"
     if "híbrido" in lower or "hybrid" in lower:
-        return "hybrid", False
+        return "hybrid"
     if "presencial" in lower or "on-site" in lower:
-        return "onsite", False
-    return "unknown", None
+        return "onsite"
+    return "unknown"
 
 
 def _detect_contract(text):
     lower = text.lower()
-    if "pj" in lower or "pessoa jurídica" in lower:
+    has_pj = "pj" in lower or "pessoa jurídica" in lower
+    has_clt = "clt" in lower
+    if has_pj and has_clt:
+        return "both"
+    if has_pj:
         return "pj"
-    if "clt" in lower:
+    if has_clt:
         return "clt"
     return "unknown"
 
@@ -30,19 +34,81 @@ def _detect_level(text):
         return "senior"
     if any(k in lower for k in ["pleno", "mid", "pl."]):
         return "mid"
-    if any(k in lower for k in ["júnior", "junior", "jr."]):
+    if any(k in lower for k in ["júnior", "junior", "jr.", "estagiário", "trainee"]):
         return "junior"
     return "unknown"
 
 
 def _parse_salary(text):
     cleaned = text.replace(".", "").replace(",", "").replace("R$", "").strip()
-    nums = [int(n) for n in re.findall(r"\d+", cleaned) if int(n) > 100]
+    nums = [int(n) for n in re.findall(r"\d+", cleaned) if int(n) > 500]
     if len(nums) >= 2:
         return nums[0], nums[1]
     if len(nums) == 1:
         return nums[0], nums[0]
     return None, None
+
+
+def _parse_detail_page(text):
+    """Extract structured job data from the GeekhHunter detail page text.
+
+    Page structure after "Voltar...":
+      [0] company name
+      [1] company HQ location (skip)
+      [2] job title
+      [3] work mode (Híbrido / Remoto / Presencial)
+      [4] job location
+      [5] "Faixa de Remuneração"
+      [6] salary value or "Não informada"
+      [7] "Nível de Experiência"
+      [8] level
+      [9+] description / requirements
+    """
+    lines = [l.strip().replace("\xa0", " ") for l in text.split("\n") if l.strip()]
+
+    start = 0
+    for i, line in enumerate(lines):
+        if "Voltar" in line:
+            start = i + 1
+            break
+    lines = lines[start:]
+    if len(lines) < 5:
+        return {}
+
+    company = lines[0]
+    # lines[1] is company HQ — skip
+    title = lines[2].title() if len(lines) > 2 else ""
+    work_mode = _detect_work_mode(lines[3]) if len(lines) > 3 else "unknown"
+    location = lines[4] if len(lines) > 4 else ""
+
+    salary_min = salary_max = None
+    level = "unknown"
+    description = ""
+
+    for i, line in enumerate(lines[5:], start=5):
+        if "Faixa de Remuneração" in line and i + 1 < len(lines):
+            sal = lines[i + 1]
+            if sal != "Não informada":
+                salary_min, salary_max = _parse_salary(sal)
+        elif "Nível de Experiência" in line and i + 1 < len(lines):
+            level = _detect_level(lines[i + 1])
+        elif any(m in line for m in ["Tarefas e Responsabilidades", "Requisitos", "Sobre a ", "Descrição"]):
+            description = " ".join(lines[i:])[:3000]
+            break
+
+    contract_type = _detect_contract(description + " " + title)
+
+    return {
+        "title": title,
+        "company": company,
+        "location": location,
+        "work_mode": work_mode,
+        "salary_min": salary_min,
+        "salary_max": salary_max,
+        "experience_level": level,
+        "contract_type": contract_type,
+        "description": description,
+    }
 
 
 def fetch_jobs(pages=3):
@@ -52,78 +118,59 @@ def fetch_jobs(pages=3):
     with sync_playwright() as p:
         browser = p.chromium.launch(args=["--no-sandbox", "--disable-dev-shm-usage"])
         page = browser.new_page()
-        page.set_extra_http_headers({
-            "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
-        })
+        page.set_extra_http_headers({"Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8"})
 
+        # Collect job URLs from listing pages
+        job_urls = []
         for page_num in range(1, pages + 1):
             url = f"{JOBS_URL}?page={page_num}" if page_num > 1 else JOBS_URL
-            page.goto(url, wait_until="networkidle", timeout=30000)
-
-            cards = page.query_selector_all("[data-testid='job-card'], article, .job-card, [class*='JobCard'], [class*='job-card']")
-            if not cards:
+            try:
+                page.goto(url, wait_until="domcontentloaded", timeout=30000)
+                page.wait_for_timeout(3000)
+            except Exception:
                 break
 
-            for card in cards:
-                try:
-                    title = card.query_selector("h2, h3, [class*='title'], [class*='Title']")
-                    title_text = title.inner_text().strip() if title else ""
-                    if not title_text:
-                        continue
+            links = page.query_selector_all("a[href]")
+            found = 0
+            for link in links:
+                href = link.get_attribute("href") or ""
+                if "/jobs/" in href and href.startswith("http"):
+                    slug = href.rstrip("/").split("/")[-1]
+                    if slug and href not in job_urls:
+                        job_urls.append(href)
+                        found += 1
+            if not found:
+                break
 
-                    company_el = card.query_selector("[class*='company'], [class*='Company']")
-                    company = company_el.inner_text().strip() if company_el else ""
-
-                    location_el = card.query_selector("[class*='location'], [class*='Location']")
-                    location = location_el.inner_text().strip() if location_el else ""
-
-                    salary_el = card.query_selector("[class*='salary'], [class*='Salary'], [class*='salario']")
-                    salary_text = salary_el.inner_text() if salary_el else ""
-                    salary_min, salary_max = _parse_salary(salary_text)
-
-                    tags_els = card.query_selector_all("[class*='tag'], [class*='Tag'], [class*='skill'], [class*='Skill']")
-                    tech_stack = [t.inner_text().strip() for t in tags_els if t.inner_text().strip()]
-
-                    link_el = card.query_selector("a[href]")
-                    href = link_el.get_attribute("href") if link_el else ""
-                    url_job = href if href.startswith("http") else f"{BASE_URL}{href}"
-
-                    external_id = href.rstrip("/").split("/")[-1] if href else ""
-                    if not external_id or not title_text:
-                        continue
-
-                    all_text = f"{title_text} {location} {salary_text}"
-                    work_mode, is_remote = _detect_work_mode(all_text)
-
-                    description = ""
-                    if url_job:
-                        try:
-                            detail = browser.new_page()
-                            detail.goto(url_job, wait_until="domcontentloaded", timeout=20000)
-                            desc_el = detail.query_selector("[class*='description'], [class*='Description'], [class*='descricao'], article, main")
-                            description = desc_el.inner_text().strip()[:3000] if desc_el else ""
-                            detail.close()
-                        except Exception:
-                            pass
-
-                    jobs.append({
-                        "external_id": external_id,
-                        "title": title_text,
-                        "company": company,
-                        "location": location,
-                        "work_mode": work_mode,
-                        "is_remote": is_remote,
-                        "salary_min": salary_min,
-                        "salary_max": salary_max,
-                        "tech_stack": tech_stack,
-                        "url": url_job,
-                        "source": "geekhunter",
-                        "contract_type": _detect_contract(all_text),
-                        "experience_level": _detect_level(title_text),
-                        "description": description,
-                    })
-                except Exception:
+        # Visit each job detail page
+        for url in job_urls:
+            try:
+                page.goto(url, wait_until="domcontentloaded", timeout=30000)
+                page.wait_for_timeout(2000)
+                text = page.evaluate("document.body.innerText")
+                data = _parse_detail_page(text)
+                if not data.get("title"):
                     continue
+
+                external_id = url.rstrip("/").split("/")[-1]
+                jobs.append({
+                    "external_id": external_id,
+                    "title": data["title"],
+                    "company": data["company"],
+                    "location": data["location"],
+                    "work_mode": data["work_mode"],
+                    "is_remote": data["work_mode"] == "remote",
+                    "salary_min": data["salary_min"],
+                    "salary_max": data["salary_max"],
+                    "tech_stack": [],
+                    "url": url,
+                    "source": "geekhunter",
+                    "contract_type": data["contract_type"],
+                    "experience_level": data["experience_level"],
+                    "description": data["description"],
+                })
+            except Exception:
+                continue
 
         browser.close()
     return jobs
