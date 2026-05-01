@@ -1,6 +1,7 @@
 services:
   db:
     image: postgres:16-alpine
+    restart: always
     environment:
       POSTGRES_DB: jobmatching
       POSTGRES_USER: jobmatching
@@ -15,6 +16,7 @@ services:
 
   backend:
     build: ./backend
+    restart: always
     ports:
       - "8889:8889"
     environment:
@@ -38,6 +40,7 @@ services:
 
   frontend:
     build: ./frontend
+    restart: always
     ports:
       - "7778:5173"
     environment:

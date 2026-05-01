@@ -95,6 +95,17 @@ def fetch_jobs(pages=3):
                     all_text = f"{title_text} {location} {salary_text}"
                     work_mode, is_remote = _detect_work_mode(all_text)
 
+                    description = ""
+                    if url_job:
+                        try:
+                            detail = browser.new_page()
+                            detail.goto(url_job, wait_until="domcontentloaded", timeout=20000)
+                            desc_el = detail.query_selector("[class*='description'], [class*='Description'], [class*='descricao'], article, main")
+                            description = desc_el.inner_text().strip()[:3000] if desc_el else ""
+                            detail.close()
+                        except Exception:
+                            pass
+
                     jobs.append({
                         "external_id": external_id,
                         "title": title_text,
@@ -109,6 +120,7 @@ def fetch_jobs(pages=3):
                         "source": "geekhunter",
                         "contract_type": _detect_contract(all_text),
                         "experience_level": _detect_level(title_text),
+                        "description": description,
                     })
                 except Exception:
                     continue

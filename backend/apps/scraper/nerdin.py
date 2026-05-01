@@ -29,6 +29,42 @@ def _parse_work_mode(text):
     return "onsite", False
 
 
+def _detect_contract(text):
+    lower = text.lower()
+    has_pj = "pj" in lower or "pessoa jurídica" in lower
+    has_clt = "clt" in lower
+    if has_pj and has_clt:
+        return "both"
+    if has_pj:
+        return "pj"
+    if has_clt:
+        return "clt"
+    return "unknown"
+
+
+def _fetch_detail(url):
+    """Returns (description, contract_type) from the job detail page."""
+    try:
+        resp = requests.get(url, headers=HEADERS, timeout=10)
+        if resp.status_code != 200:
+            return "", "unknown"
+        soup = BeautifulSoup(resp.text, "lxml")
+        tab = soup.find("div", class_="tab-content")
+        if not tab:
+            return "", "unknown"
+        full_text = tab.get_text("\n", strip=True)
+        # Strip noise before the actual description
+        description = full_text
+        for marker in ["Sobre a Vaga", "Descrição da vaga", "Descrição"]:
+            idx = full_text.find(marker)
+            if idx != -1:
+                description = full_text[idx:].strip()
+                break
+        return description[:3000], _detect_contract(full_text)
+    except Exception:
+        return "", "unknown"
+
+
 def _parse_card(card):
     title_el = card.find("h3", class_="vaga-titulo")
     title = title_el.get_text(" ", strip=True) if title_el else ""
@@ -84,5 +120,9 @@ def fetch_jobs(pages=3):
         for card in cards:
             job = _parse_card(card)
             if job:
+                description, contract_type = _fetch_detail(job["url"])
+                job["description"] = description
+                if contract_type != "unknown":
+                    job["contract_type"] = contract_type
                 jobs.append(job)
     return jobs

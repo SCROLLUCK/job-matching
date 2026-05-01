@@ -6,10 +6,11 @@ import ProfileEditor from "./components/ProfileEditor";
 import Toast from "./components/Toast";
 import { useToast } from "./hooks/useToast";
 
-type Tab = "jobs" | "profile";
+type Tab = "jobs" | "applied" | "profile";
 
 export default function App() {
   const [jobs, setJobs] = useState<Job[]>([]);
+  const [appliedJobs, setAppliedJobs] = useState<Job[]>([]);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [filters, setFilters] = useState<JobFilters>({ sort: "score" });
   const [tab, setTab] = useState<Tab>("jobs");
@@ -28,6 +29,12 @@ export default function App() {
       setLoading(false);
     });
   }, [filters]);
+
+  useEffect(() => {
+    if (tab === "applied") {
+      fetchJobs({ application_status: "applied" }).then(setAppliedJobs);
+    }
+  }, [tab]);
 
   async function handleScrape() {
     setScraping(true);
@@ -65,6 +72,12 @@ export default function App() {
                 Jobs {jobs.length > 0 && <span className="ml-1 text-xs text-gray-400">({jobs.length})</span>}
               </button>
               <button
+                onClick={() => setTab("applied")}
+                className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${tab === "applied" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+              >
+                Applied
+              </button>
+              <button
                 onClick={() => setTab("profile")}
                 className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${tab === "profile" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
               >
@@ -100,6 +113,24 @@ export default function App() {
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {tab === "applied" && (
+          <div className="flex-1 min-w-0">
+            {appliedJobs.length === 0 ? (
+              <div className="text-center py-16 text-gray-400">
+                <p className="text-lg font-medium">No applications yet</p>
+                <p className="text-sm mt-1">Mark jobs as applied from the Jobs tab</p>
+              </div>
+            ) : (
+              <>
+                <p className="text-sm text-gray-500 mb-4">{appliedJobs.length} application{appliedJobs.length !== 1 ? "s" : ""}</p>
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                  {appliedJobs.map((job) => <JobCard key={job.id} job={job} />)}
+                </div>
+              </>
+            )}
           </div>
         )}
 

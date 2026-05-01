@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import F
 
 
 class Job(models.Model):
@@ -41,12 +42,18 @@ class Job(models.Model):
     source = models.CharField(max_length=20, choices=SOURCE_CHOICES)
     posted_at = models.DateTimeField(null=True, blank=True)
     scraped_at = models.DateTimeField(auto_now_add=True)
+    APPLICATION_STATUS_CHOICES = [
+        ("applied", "Applied"),
+        ("rejected", "Rejected"),
+    ]
+
     score = models.FloatField(null=True, blank=True)
     score_breakdown = models.JSONField(default=dict)
+    application_status = models.CharField(max_length=20, choices=APPLICATION_STATUS_CHOICES, blank=True, default="")
 
     class Meta:
         unique_together = ("external_id", "source")
-        ordering = ["-score", "-scraped_at"]
+        ordering = [F("score").desc(nulls_last=True), "-scraped_at"]
 
     def __str__(self):
         return f"{self.title} @ {self.company} ({self.source})"

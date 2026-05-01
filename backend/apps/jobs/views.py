@@ -1,6 +1,6 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from django.db.models import Q
+from django.db.models import Q, F
 from .models import Job
 from .serializers import JobSerializer
 
@@ -37,17 +37,38 @@ class JobListView(APIView):
         if salary_max:
             qs = qs.filter(salary_min__lte=int(salary_max))
 
+        application_status = request.query_params.get("application_status")
+        if application_status is not None:
+            qs = qs.filter(application_status=application_status)
+
         search = request.query_params.get("search")
         if search:
             qs = qs.filter(Q(title__icontains=search) | Q(description__icontains=search) | Q(company__icontains=search))
 
         sort = request.query_params.get("sort", "score")
-        sort_map = {
-            "score": "-score",
-            "date": "-posted_at",
-            "salary": "-salary_max",
-            "scraped": "-scraped_at",
-        }
-        qs = qs.order_by(sort_map.get(sort, "-score"), "-scraped_at")
+        if sort == "score":
+            qs = qs.order_by(F("score").desc(nulls_last=True), "-scraped_at")
+        elif sort == "date":
+            qs = qs.order_by(F("posted_at").desc(nulls_last=True), "-scraped_at")
+        elif sort == "salary":
+            qs = qs.order_by(F("salary_max").desc(nulls_last=True), "-scraped_at")
+        else:
+            qs = qs.order_by("-scraped_at")
 
         return Response(JobSerializer(qs, many=True).data)
+
+
+class JobStatusView(APIView):
+    VALID = {"", "applied", "rejected"}
+
+    def post(self, request, pk):
+        try:
+            job = Job.objects.get(pk=pk)
+        except Job.DoesNotExist:
+            return Response(status=404)
+        new_status = request.data.get("status", "")
+        if new_status not in self.VALID:
+            return Response({"error": "Invalid status"}, status=400)
+        job.application_status = new_status
+        job.save(update_fields=["application_status"])
+        return Response({"application_status": job.application_status})

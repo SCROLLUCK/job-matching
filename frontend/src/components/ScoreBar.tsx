@@ -38,7 +38,6 @@ export default function ScoreBar({ score, breakdown }: Props) {
       <Bar label="Role" value={breakdown.role_match} />
       <Bar label="Work mode" value={breakdown.work_mode_match} />
       <Bar label="Contract" value={breakdown.contract_match} />
-      {breakdown.summary && <p className="text-xs text-gray-500 pt-1 italic">{breakdown.summary}</p>}
     </div>
   );
 }

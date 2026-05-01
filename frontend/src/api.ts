@@ -18,6 +18,7 @@ export interface Job {
   posted_at: string | null;
   scraped_at: string;
   score: number | null;
+  application_status: "" | "applied" | "rejected";
   score_breakdown: {
     stack_match?: number;
     salary_match?: number;
@@ -50,6 +51,7 @@ export interface JobFilters {
   salary_max?: number;
   search?: string;
   sort?: "score" | "date" | "salary" | "scraped";
+  application_status?: string;
 }
 
 export async function fetchJobs(filters: JobFilters = {}): Promise<Job[]> {
@@ -86,5 +88,14 @@ export async function runScrape(sources?: string[]): Promise<Record<string, unkn
 
 export async function rescoreJobs(): Promise<{ updated: number }> {
   const res = await fetch(`${BASE}/api/scraper/rescore/`, { method: "POST" });
+  return res.json();
+}
+
+export async function setJobStatus(id: number, status: "" | "applied" | "rejected"): Promise<{ application_status: string }> {
+  const res = await fetch(`${BASE}/api/jobs/${id}/status/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status }),
+  });
   return res.json();
 }

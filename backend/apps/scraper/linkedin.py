@@ -33,6 +33,38 @@ def _detect_level(title):
     return "unknown"
 
 
+DETAIL_URL = "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/{job_id}"
+
+
+def _detect_contract(text):
+    lower = text.lower()
+    has_pj = "pj" in lower or "pessoa jurídica" in lower
+    has_clt = "clt" in lower
+    if has_pj and has_clt:
+        return "both"
+    if has_pj:
+        return "pj"
+    if has_clt:
+        return "clt"
+    return "unknown"
+
+
+def _fetch_detail(job_id):
+    """Returns (description, contract_type) from the LinkedIn job posting API."""
+    try:
+        # external_id may be the full slug; numeric ID is the last segment
+        numeric_id = job_id.split("-")[-1] if not job_id.isdigit() else job_id
+        resp = requests.get(DETAIL_URL.format(job_id=numeric_id), headers=HEADERS, timeout=10)
+        if resp.status_code != 200:
+            return "", "unknown"
+        soup = BeautifulSoup(resp.text, "lxml")
+        desc = soup.find(class_="show-more-less-html__markup")
+        text = desc.get_text("\n", strip=True)[:3000] if desc else ""
+        return text, _detect_contract(text)
+    except Exception:
+        return "", "unknown"
+
+
 def _parse_item(item):
     title_el = item.find("h3")
     title = title_el.get_text(strip=True) if title_el else ""
@@ -87,6 +119,10 @@ def fetch_jobs(keywords="desenvolvedor", location="Brazil", pages=3):
         for item in items:
             job = _parse_item(item)
             if job:
+                description, contract_type = _fetch_detail(job["external_id"])
+                job["description"] = description
+                if contract_type != "unknown":
+                    job["contract_type"] = contract_type
                 jobs.append(job)
         if not items:
             break

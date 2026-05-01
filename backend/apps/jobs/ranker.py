@@ -37,6 +37,11 @@ JOB OPENING:
 - Work mode: {job_data.get('work_mode', 'unknown')}
 - Description: {job_data.get('description', '')[:600]}
 
+Scoring rules — apply strictly:
+- If the job does NOT specify a value for a criterion (salary, contract, work mode, tech stack), score that criterion 0.0.
+- Only score a criterion above 0 if the job explicitly provides that information.
+- The overall score is the average of all five criteria.
+
 Return ONLY valid JSON, no other text:
 {{
   "score": <float 0.0-10.0>,
@@ -56,4 +61,14 @@ Return ONLY valid JSON, no other text:
         max_tokens=300,
         messages=[{"role": "user", "content": prompt}],
     )
-    return json.loads(response.content[0].text)
+    text = response.content[0].text.strip()
+    # strip markdown code fences if present
+    if text.startswith("```"):
+        text = text.split("```")[1]
+        if text.startswith("json"):
+            text = text[4:]
+        text = text.strip()
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        return {}
