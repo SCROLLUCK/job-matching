@@ -50,7 +50,7 @@
 - Scores five criteria: `stack_match`, `salary_match`, `role_match`, `work_mode_match`, `contract_match`
 - Rule: if a criterion is missing in the job listing, score is **0.0** (not 5.0)
 - Overall score is the average of the five criteria
-- Returns JSON with `score`, `breakdown`, and `summary`
+- Returns JSON with `score` and `breakdown`
 
 ### Rescore
 - `POST /api/scraper/rescore/` re-scores all jobs using the current profile

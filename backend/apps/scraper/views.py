@@ -1,11 +1,13 @@
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
 from django.utils import timezone
+from rest_framework import status
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
 from apps.jobs.models import Job
 from apps.jobs.ranker import score_job
 from apps.profile.models import UserProfile
-from . import nerdin, linkedin, geekhunter, indeed
+
+from . import geekhunter, indeed, linkedin, nerdin
 
 
 def _save_jobs(job_list):
@@ -23,8 +25,6 @@ def _save_jobs(job_list):
         score_result = score_job(data, profile)
         score = score_result.get("score")
         breakdown = score_result.get("breakdown", {})
-        if score_result.get("summary"):
-            breakdown["summary"] = score_result["summary"]
 
         Job.objects.create(
             external_id=data["external_id"],
@@ -108,8 +108,6 @@ class RescoreView(APIView):
             result = score_job(data, profile)
             if result:
                 breakdown = result.get("breakdown", {})
-                if result.get("summary"):
-                    breakdown["summary"] = result["summary"]
                 job.score = result.get("score")
                 job.score_breakdown = breakdown
                 job.save(update_fields=["score", "score_breakdown"])

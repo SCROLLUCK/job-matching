@@ -25,7 +25,6 @@ export interface Job {
     role_match?: number;
     work_mode_match?: number;
     contract_match?: number;
-    summary?: string;
   };
 }
 
@@ -68,7 +67,9 @@ export async function fetchProfile(): Promise<UserProfile> {
   return res.json();
 }
 
-export async function saveProfile(data: Partial<UserProfile>): Promise<UserProfile> {
+export async function saveProfile(
+  data: Partial<UserProfile>,
+): Promise<UserProfile> {
   const res = await fetch(`${BASE}/api/profile/`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
@@ -77,7 +78,9 @@ export async function saveProfile(data: Partial<UserProfile>): Promise<UserProfi
   return res.json();
 }
 
-export async function runScrape(sources?: string[]): Promise<Record<string, unknown>> {
+export async function runScrape(
+  sources?: string[],
+): Promise<Record<string, unknown>> {
   const res = await fetch(`${BASE}/api/scraper/run/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -91,7 +94,10 @@ export async function rescoreJobs(): Promise<{ updated: number }> {
   return res.json();
 }
 
-export async function setJobStatus(id: number, status: "" | "applied" | "rejected"): Promise<{ application_status: string }> {
+export async function setJobStatus(
+  id: number,
+  status: "" | "applied" | "rejected",
+): Promise<{ application_status: string }> {
   const res = await fetch(`${BASE}/api/jobs/${id}/status/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

@@ -1,4 +1,5 @@
 import json
+
 import anthropic
 from django.conf import settings
 
@@ -59,7 +60,6 @@ Return ONLY valid JSON, no other text:
     "work_mode_match": <float 0.0-10.0>,
     "contract_match": <float 0.0-10.0>
   }},
-  "summary": "<one sentence in English>"
 }}"""
 
     client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
