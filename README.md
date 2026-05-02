@@ -1,27 +1,28 @@
 # Job Matching
 
-Job aggregator that scrapes LinkedIn, Nerdin, and GeekhHunter, then ranks results by compatibility with your profile using Claude AI.
+Job aggregator that scrapes LinkedIn, Nerdin, GeekhHunter, and Indeed, then ranks results by compatibility with your profile using Claude AI.
 
 ## Features
 
-- Scrapes job listings from LinkedIn, Nerdin, and GeekhHunter
+- Scrapes job listings from LinkedIn, Nerdin, GeekhHunter, and Indeed
 - Scores each job (0–10) across five criteria: stack, salary, role, work mode, and contract
 - Editable candidate profile (tech stack, salary range, contract preference, work mode, competencies)
 - Re-score all jobs after updating your profile
 - Mark jobs as Applied / Not selected
 - Applied jobs tab with status tracking
 - Filter by source, contract type, work mode, experience level, salary range, and score
+- Stats tab: dual-bar chart of tech stack occurrences and average salary, filterable by level, stack, and sort order
 - Periodic auto-scrape via APScheduler
 
 ## Stack
 
 | Layer    | Technology                                      |
 |----------|-------------------------------------------------|
-| Frontend | React + Vite + TypeScript + Tailwind CSS        |
+| Frontend | React + Vite + TypeScript + Tailwind CSS + ECharts |
 | Backend  | Django REST Framework (Python 3.12)             |
 | Database | PostgreSQL                                      |
 | Infra    | Docker Compose (`restart: always` on all services) |
-| Scraping | requests + BeautifulSoup4 (LinkedIn, Nerdin) / Playwright (GeekhHunter) |
+| Scraping | requests + BeautifulSoup4 (LinkedIn, Nerdin) / Playwright (GeekhHunter, Indeed) / curl-cffi (Indeed RPC) |
 | AI       | Anthropic Claude Haiku via SDK                  |
 
 ## Getting Started
@@ -64,7 +65,7 @@ Returns scored job listings.
 
 | Query param          | Type   | Description                                      |
 |----------------------|--------|--------------------------------------------------|
-| `source`             | string | `linkedin` \| `nerdin` \| `geekhunter`          |
+| `source`             | string | `linkedin` \| `nerdin` \| `geekhunter` \| `indeed` |
 | `contract_type`      | string | `pj` \| `clt` \| `both`                         |
 | `work_mode`          | string | `remote` \| `hybrid` \| `onsite`                |
 | `experience_level`   | string | `junior` \| `mid` \| `senior`                   |
@@ -94,6 +95,14 @@ Triggers a manual scrape. Optionally restrict to specific sources:
 ### `POST /api/scraper/rescore/`
 
 Re-scores all jobs using the current profile.
+
+### `GET /api/jobs/stats/`
+
+Returns aggregated stats for the Stats tab.
+
+| Query param | Type   | Description                                             |
+|-------------|--------|---------------------------------------------------------|
+| `level`     | string | Comma-separated levels to filter stack stats (e.g. `junior,mid`) |
 
 ### `GET /api/profile/`
 
