@@ -19,6 +19,8 @@ export default function App() {
   const [scraping, setScraping] = useState(false);
   const { toast, showToast, clearToast } = useToast();
 
+  const profileFilled = profile !== null && (profile.competencies.trim().length > 0 || profile.tech_stack.length > 0);
+
   const refreshApplied = () => fetchJobs({ application_status: "applied" }).then(setAppliedJobs);
 
   useEffect(() => {
@@ -92,13 +94,20 @@ export default function App() {
                 Profile
               </button>
             </div>
-            <button
-              onClick={handleScrape}
-              disabled={scraping}
-              className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium px-4 py-1.5 rounded-lg transition-colors"
-            >
-              {scraping ? "Scraping…" : "Scrape Now"}
-            </button>
+            <div className="relative group">
+              <button
+                onClick={handleScrape}
+                disabled={scraping || !profileFilled}
+                className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium px-4 py-1.5 rounded-lg transition-colors"
+              >
+                {scraping ? "Scraping…" : "Scrape Now"}
+              </button>
+              {!profileFilled && (
+                <div className="absolute bottom-full mb-1.5 right-0 hidden group-hover:block whitespace-nowrap bg-gray-800 text-white text-xs rounded px-2 py-1">
+                  Fill in your profile before scraping
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </header>
