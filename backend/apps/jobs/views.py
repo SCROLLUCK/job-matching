@@ -5,6 +5,60 @@ from .models import Job
 from .serializers import JobSerializer
 
 
+class JobStatsView(APIView):
+    def get(self, request):
+        jobs = list(Job.objects.values("experience_level", "tech_stack", "salary_min"))
+
+        # By level
+        level_data: dict = {}
+        for job in jobs:
+            level = job["experience_level"] or "unknown"
+            entry = level_data.setdefault(level, {"count": 0, "salaries": []})
+            entry["count"] += 1
+            if job["salary_min"]:
+                entry["salaries"].append(job["salary_min"])
+
+        order = ["junior", "mid", "senior", "unknown"]
+        by_level = sorted(
+            [
+                {
+                    "level": level,
+                    "count": d["count"],
+                    "avg_salary": round(sum(d["salaries"]) / len(d["salaries"])) if d["salaries"] else None,
+                }
+                for level, d in level_data.items()
+            ],
+            key=lambda x: order.index(x["level"]) if x["level"] in order else 99,
+        )
+
+        # By stack (optionally filtered by level)
+        level_param = request.query_params.get("level", "")
+        level_filter = [l for l in level_param.split(",") if l]
+        stack_jobs = [j for j in jobs if j["experience_level"] in level_filter] if level_filter else jobs
+        stack_data: dict = {}
+        for job in stack_jobs:
+            for tech in job["tech_stack"]:
+                entry = stack_data.setdefault(tech.lower(), {"count": 0, "salaries": []})
+                entry["count"] += 1
+                if job["salary_min"]:
+                    entry["salaries"].append(job["salary_min"])
+
+        by_stack = sorted(
+            [
+                {
+                    "tech": tech,
+                    "count": d["count"],
+                    "avg_salary": round(sum(d["salaries"]) / len(d["salaries"])) if d["salaries"] else None,
+                }
+                for tech, d in stack_data.items()
+            ],
+            key=lambda x: x["count"],
+            reverse=True,
+        )
+
+        return Response({"by_level": by_level, "by_stack": by_stack})
+
+
 class JobListView(APIView):
     def get(self, request):
         qs = Job.objects.all()

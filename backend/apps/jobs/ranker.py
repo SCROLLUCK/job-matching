@@ -59,7 +59,7 @@ Return ONLY valid JSON, no other text:
     "role_match": <float 0.0-10.0>,
     "work_mode_match": <float 0.0-10.0>,
     "contract_match": <float 0.0-10.0>
-  }},
+  }}
 }}"""
 
     client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)

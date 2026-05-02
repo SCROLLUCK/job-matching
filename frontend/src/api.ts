@@ -94,6 +94,20 @@ export async function rescoreJobs(): Promise<{ updated: number }> {
   return res.json();
 }
 
+export interface JobStats {
+  by_level: { level: string; count: number; avg_salary: number | null }[];
+  by_stack: { tech: string; count: number; avg_salary: number | null }[];
+}
+
+export async function fetchStats(levels?: string[]): Promise<JobStats> {
+  const url =
+    levels && levels.length > 0
+      ? `${BASE}/api/jobs/stats/?level=${levels.join(",")}`
+      : `${BASE}/api/jobs/stats/`;
+  const res = await fetch(url);
+  return res.json();
+}
+
 export async function setJobStatus(
   id: number,
   status: "" | "applied" | "rejected",

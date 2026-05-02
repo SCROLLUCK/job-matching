@@ -3,10 +3,11 @@ import { Job, UserProfile, JobFilters, fetchJobs, fetchProfile, runScrape } from
 import JobCard from "./components/JobCard";
 import FilterDrawer from "./components/FilterDrawer";
 import ProfileEditor from "./components/ProfileEditor";
+import StatsView from "./components/StatsView";
 import Toast from "./components/Toast";
 import { useToast } from "./hooks/useToast";
 
-type Tab = "jobs" | "applied" | "profile";
+type Tab = "jobs" | "applied" | "stats" | "profile";
 
 export default function App() {
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -79,6 +80,12 @@ export default function App() {
                 Applied {appliedJobs.length > 0 && <span className="ml-1 text-xs text-gray-400">({appliedJobs.length})</span>}
               </button>
               <button
+                onClick={() => setTab("stats")}
+                className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${tab === "stats" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+              >
+                Stats
+              </button>
+              <button
                 onClick={() => setTab("profile")}
                 className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${tab === "profile" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
               >
@@ -134,6 +141,8 @@ export default function App() {
             )}
           </div>
         )}
+
+        {tab === "stats" && <StatsView />}
 
         {tab === "profile" && profile && (
           <div className="w-full">
