@@ -75,20 +75,43 @@ def _detect_contract(text):
     return "unknown"
 
 
+def _parse_salary(text):
+    text = re.sub(r"por\s+(mês|hora|ano|semana|dia)", "", text, flags=re.IGNORECASE)
+    text = re.sub(r",\d{2}\b", "", text)
+    cleaned = text.replace(".", "").replace("R$", "").replace("–", " ").replace("-", " ").strip()
+    nums = [int(n) for n in re.findall(r"\d+", cleaned) if int(n) > 500]
+    if len(nums) >= 2:
+        return nums[0], nums[1]
+    if len(nums) == 1:
+        return nums[0], nums[0]
+    return None, None
+
+
+def _extract_salary(description):
+    for line in description.split("\n"):
+        lower = line.lower()
+        if "r$" in lower or "salário" in lower or "remuneração" in lower:
+            s_min, s_max = _parse_salary(line)
+            if s_min and s_min > 1000:
+                return s_min, s_max
+    return None, None
+
+
 def _fetch_detail(job_id):
-    """Returns (description, contract_type) from the LinkedIn job posting API."""
+    """Returns (description, contract_type, salary_min, salary_max, work_mode) from the LinkedIn job posting API."""
     try:
-        # external_id may be the full slug; numeric ID is the last segment
         numeric_id = job_id.split("-")[-1] if not job_id.isdigit() else job_id
         resp = requests.get(DETAIL_URL.format(job_id=numeric_id), headers=HEADERS, timeout=10)
         if resp.status_code != 200:
-            return "", "unknown"
+            return "", "unknown", None, None, "unknown"
         soup = BeautifulSoup(resp.text, "lxml")
         desc = soup.find(class_="show-more-less-html__markup")
         text = desc.get_text("\n", strip=True)[:3000] if desc else ""
-        return text, _detect_contract(text)
+        salary_min, salary_max = _extract_salary(text)
+        work_mode, _ = _detect_work_mode(text)
+        return text, _detect_contract(text), salary_min, salary_max, work_mode
     except Exception:
-        return "", "unknown"
+        return "", "unknown", None, None, "unknown"
 
 
 def _parse_item(item):
@@ -145,10 +168,15 @@ def fetch_jobs(keywords="desenvolvedor", location="Brazil", pages=3):
         for item in items:
             job = _parse_item(item)
             if job:
-                description, contract_type = _fetch_detail(job["external_id"])
+                description, contract_type, salary_min, salary_max, work_mode = _fetch_detail(job["external_id"])
                 job["description"] = description
                 if contract_type != "unknown":
                     job["contract_type"] = contract_type
+                if salary_min:
+                    job["salary_min"] = salary_min
+                    job["salary_max"] = salary_max
+                if job["work_mode"] == "unknown" and work_mode != "unknown":
+                    job["work_mode"] = work_mode
                 if description:
                     job["tech_stack"] = _extract_tech_stack(description)
                 jobs.append(job)

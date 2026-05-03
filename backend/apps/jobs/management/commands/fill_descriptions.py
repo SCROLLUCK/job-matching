@@ -18,7 +18,7 @@ class Command(BaseCommand):
             if job.source == "nerdin":
                 desc, contract_type = nerdin._fetch_detail(job.url)
             elif job.source == "linkedin":
-                desc, contract_type = linkedin._fetch_detail(job.external_id)
+                desc, contract_type, *_ = linkedin._fetch_detail(job.external_id)
 
             fields = []
             if desc:
