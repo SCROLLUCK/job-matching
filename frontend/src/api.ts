@@ -75,12 +75,12 @@ export async function fetchProfile(): Promise<UserProfile> {
 }
 
 export async function autofillProfile(
-  url: string,
+  text: string,
 ): Promise<{ competencies: string; tech_stack: string[]; preferred_roles: string[] }> {
   const res = await fetch(`${BASE}/api/profile/autofill/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ url }),
+    body: JSON.stringify({ text }),
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error ?? "Autofill failed");

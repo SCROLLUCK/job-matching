@@ -26,11 +26,11 @@ class UserProfileView(APIView):
 
 class AutofillView(APIView):
     def post(self, request):
-        url = request.data.get("url", "").strip()
-        if not url or "linkedin.com/in/" not in url:
-            return Response({"error": "Provide a valid LinkedIn profile URL."}, status=status.HTTP_400_BAD_REQUEST)
+        text = request.data.get("text", "").strip()
+        if len(text) < 100:
+            return Response({"error": "Paste more text — at least 100 characters needed."}, status=status.HTTP_400_BAD_REQUEST)
         try:
-            data = extract_profile_data(url)
+            data = extract_profile_data(text)
             return Response(data)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_502_BAD_GATEWAY)

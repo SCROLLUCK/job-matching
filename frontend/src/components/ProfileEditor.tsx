@@ -62,7 +62,8 @@ export default function ProfileEditor({ profile, onSaved, showToast, startProgre
   const [form, setForm] = useState(profile);
   const [saving, setSaving] = useState(false);
   const [rescoring, setRescoring] = useState(false);
-  const [linkedinUrl, setLinkedinUrl] = useState("");
+  const [pasteText, setPasteText] = useState("");
+  const [showPaste, setShowPaste] = useState(false);
   const [autofilling, setAutofilling] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -84,13 +85,20 @@ export default function ProfileEditor({ profile, onSaved, showToast, startProgre
   async function handleAutofill() {
     setAutofilling(true);
     try {
-      const data = await autofillProfile(linkedinUrl);
+      const data = await autofillProfile(pasteText);
+      const hasData = data.competencies || data.tech_stack.length || data.preferred_roles.length;
+      if (!hasData) {
+        showToast("Nothing extracted — profile may require login", "error");
+        return;
+      }
       setForm((f) => ({
         ...f,
-        competencies: data.competencies || f.competencies,
-        tech_stack: data.tech_stack.length ? data.tech_stack : f.tech_stack,
-        preferred_roles: data.preferred_roles.length ? data.preferred_roles : f.preferred_roles,
+        ...(data.competencies && { competencies: data.competencies }),
+        ...(data.tech_stack.length && { tech_stack: data.tech_stack }),
+        ...(data.preferred_roles.length && { preferred_roles: data.preferred_roles }),
       }));
+      setPasteText("");
+      setShowPaste(false);
       showToast("Profile filled — review and save", "success");
     } catch (e: unknown) {
       showToast(e instanceof Error ? e.message : "Autofill failed", "error");
@@ -154,21 +162,35 @@ export default function ProfileEditor({ profile, onSaved, showToast, startProgre
         </div>
       </div>
 
-      <div className="flex gap-2">
-        <input
-          type="url"
-          value={linkedinUrl}
-          onChange={(e) => setLinkedinUrl(e.target.value)}
-          placeholder="https://linkedin.com/in/your-profile"
-          className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
+      <div className="space-y-2">
         <button
-          onClick={handleAutofill}
-          disabled={autofilling || !linkedinUrl.includes("linkedin.com/in/")}
-          className="shrink-0 bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 text-sm font-medium px-4 py-1.5 rounded-lg transition-colors"
+          type="button"
+          onClick={() => setShowPaste((v) => !v)}
+          className="text-sm text-blue-600 hover:text-blue-700 font-medium"
         >
-          {autofilling ? "Filling…" : "Auto-fill from LinkedIn"}
+          {showPaste ? "▲ Hide" : "▼ Auto-fill from LinkedIn"}
         </button>
+        {showPaste && (
+          <div className="border border-gray-200 rounded-lg p-3 space-y-2 bg-gray-50">
+            <p className="text-xs text-gray-500">
+              Open your LinkedIn profile, select all (<kbd className="bg-gray-200 px-1 rounded">Ctrl+A</kbd>), copy and paste below.
+            </p>
+            <textarea
+              value={pasteText}
+              onChange={(e) => setPasteText(e.target.value)}
+              placeholder="Paste LinkedIn profile text here…"
+              rows={5}
+              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y bg-white"
+            />
+            <button
+              onClick={handleAutofill}
+              disabled={autofilling || pasteText.length < 100}
+              className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium px-4 py-1.5 rounded-lg transition-colors"
+            >
+              {autofilling ? "Extracting…" : "Extract from text"}
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-6">
