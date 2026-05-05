@@ -65,19 +65,27 @@ class JobListView(APIView):
 
         source = request.query_params.get("source")
         if source:
-            qs = qs.filter(source=source)
+            qs = qs.filter(source__in=[s for s in source.split(",") if s])
 
         contract_type = request.query_params.get("contract_type")
         if contract_type:
-            qs = qs.filter(contract_type=contract_type)
+            qs = qs.filter(contract_type__in=[c for c in contract_type.split(",") if c])
 
         work_mode = request.query_params.get("work_mode")
         if work_mode:
-            qs = qs.filter(work_mode=work_mode)
+            qs = qs.filter(work_mode__in=[m for m in work_mode.split(",") if m])
 
         experience_level = request.query_params.get("experience_level")
         if experience_level:
-            qs = qs.filter(experience_level=experience_level)
+            qs = qs.filter(experience_level__in=[l for l in experience_level.split(",") if l])
+
+        stack = request.query_params.get("stack")
+        if stack:
+            techs = [t.strip().lower() for t in stack.split(",") if t.strip()]
+            q = Q()
+            for tech in techs:
+                q |= Q(tech_stack__icontains=tech)
+            qs = qs.filter(q)
 
         min_score = request.query_params.get("min_score")
         if min_score:

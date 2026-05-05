@@ -41,10 +41,11 @@ export interface UserProfile {
 }
 
 export interface JobFilters {
-  source?: string;
-  contract_type?: string;
-  work_mode?: string;
-  experience_level?: string;
+  source?: string[];
+  contract_type?: string[];
+  work_mode?: string[];
+  experience_level?: string[];
+  stack?: string[];
   min_score?: number;
   salary_min?: number;
   salary_max?: number;
@@ -56,7 +57,12 @@ export interface JobFilters {
 export async function fetchJobs(filters: JobFilters = {}): Promise<Job[]> {
   const params = new URLSearchParams();
   Object.entries(filters).forEach(([k, v]) => {
-    if (v !== undefined && v !== "" && v !== null) params.set(k, String(v));
+    if (v === undefined || v === null || v === "") return;
+    if (Array.isArray(v)) {
+      if (v.length > 0) params.set(k, v.join(","));
+    } else {
+      params.set(k, String(v));
+    }
   });
   const res = await fetch(`${BASE}/api/jobs/?${params}`);
   return res.json();
