@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { UserProfile, saveProfile, rescoreJobs } from "../api";
+import { useState, useEffect, useRef } from "react";
+import { UserProfile, saveProfile, rescoreJobs, autofillProfile } from "../api";
 import TagInput from "./TagInput";
 import MultiSelect from "./MultiSelect";
 
@@ -36,7 +36,7 @@ function WeightToggle({ value, onChange }: { value: number; onChange: (v: number
           key={level.value}
           type="button"
           onClick={() => onChange(level.value)}
-          className={`flex-1 py-1 transition-colors ${
+          className={`flex-1 px-3 py-1.5 transition-colors ${
             value === level.value
               ? "bg-blue-600 text-white"
               : "bg-white text-gray-500 hover:bg-gray-50"
@@ -62,6 +62,16 @@ export default function ProfileEditor({ profile, onSaved, showToast, startProgre
   const [form, setForm] = useState(profile);
   const [saving, setSaving] = useState(false);
   const [rescoring, setRescoring] = useState(false);
+  const [linkedinUrl, setLinkedinUrl] = useState("");
+  const [autofilling, setAutofilling] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [form.competencies]);
 
   const set = <K extends keyof UserProfile>(key: K, value: UserProfile[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
@@ -70,6 +80,24 @@ export default function ProfileEditor({ profile, onSaved, showToast, startProgre
   const weights: Record<string, number> = { ...defaultWeights, ...(form.score_weights || {}) };
   const setWeight = (key: string, value: number) =>
     setForm((f) => ({ ...f, score_weights: { ...weights, [key]: value } }));
+
+  async function handleAutofill() {
+    setAutofilling(true);
+    try {
+      const data = await autofillProfile(linkedinUrl);
+      setForm((f) => ({
+        ...f,
+        competencies: data.competencies || f.competencies,
+        tech_stack: data.tech_stack.length ? data.tech_stack : f.tech_stack,
+        preferred_roles: data.preferred_roles.length ? data.preferred_roles : f.preferred_roles,
+      }));
+      showToast("Profile filled — review and save", "success");
+    } catch (e: unknown) {
+      showToast(e instanceof Error ? e.message : "Autofill failed", "error");
+    } finally {
+      setAutofilling(false);
+    }
+  }
 
   async function handleSave() {
     setSaving(true);
@@ -126,26 +154,34 @@ export default function ProfileEditor({ profile, onSaved, showToast, startProgre
         </div>
       </div>
 
+      <div className="flex gap-2">
+        <input
+          type="url"
+          value={linkedinUrl}
+          onChange={(e) => setLinkedinUrl(e.target.value)}
+          placeholder="https://linkedin.com/in/your-profile"
+          className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+        <button
+          onClick={handleAutofill}
+          disabled={autofilling || !linkedinUrl.includes("linkedin.com/in/")}
+          className="shrink-0 bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 text-sm font-medium px-4 py-1.5 rounded-lg transition-colors"
+        >
+          {autofilling ? "Filling…" : "Auto-fill from LinkedIn"}
+        </button>
+      </div>
+
       <div className="grid grid-cols-2 gap-6">
-        <div className="flex flex-col">
+        <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">Competencies</label>
           <textarea
+            ref={textareaRef}
             value={form.competencies}
             onChange={(e) => set("competencies", e.target.value)}
             placeholder="Describe your skills, experience, technologies you know, years of experience, etc."
-            className="flex-1 w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
+            rows={4}
+            className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none overflow-hidden"
           />
-          <div className="mt-4">
-            <label className="block text-xs font-medium text-gray-600 mb-2">Scoring weights</label>
-            <div className="space-y-2">
-              {WEIGHT_CRITERIA.map(({ key, label }) => (
-                <div key={key} className="flex items-center gap-3">
-                  <span className="text-xs text-gray-500 w-20 shrink-0">{label}</span>
-                  <WeightToggle value={weights[key] ?? 2} onChange={(v) => setWeight(key, v)} />
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
 
         <div className="space-y-4">
@@ -210,6 +246,18 @@ export default function ProfileEditor({ profile, onSaved, showToast, startProgre
                 placeholder="Any"
                 allLabel="Any"
               />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-3">Scoring weights</label>
+            <div className="space-y-3">
+              {WEIGHT_CRITERIA.map(({ key, label }) => (
+                <div key={key} className="flex items-center gap-4">
+                  <span className="text-xs text-gray-500 w-20 shrink-0">{label}</span>
+                  <WeightToggle value={weights[key] ?? 2} onChange={(v) => setWeight(key, v)} />
+                </div>
+              ))}
             </div>
           </div>
         </div>

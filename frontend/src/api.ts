@@ -74,6 +74,19 @@ export async function fetchProfile(): Promise<UserProfile> {
   return res.json();
 }
 
+export async function autofillProfile(
+  url: string,
+): Promise<{ competencies: string; tech_stack: string[]; preferred_roles: string[] }> {
+  const res = await fetch(`${BASE}/api/profile/autofill/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ url }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error ?? "Autofill failed");
+  return data;
+}
+
 export async function saveProfile(
   data: Partial<UserProfile>,
 ): Promise<UserProfile> {
