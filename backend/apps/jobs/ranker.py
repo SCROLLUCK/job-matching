@@ -4,6 +4,24 @@ import anthropic
 from django.conf import settings
 
 
+def _work_mode_match(job_mode, preferred: list) -> float:
+    if not preferred:
+        return 10.0
+    if job_mode == "unknown":
+        return 5.0
+    return 10.0 if job_mode in preferred else 0.0
+
+
+def _contract_match(job_contract, preferred: list) -> float:
+    if not preferred:
+        return 10.0
+    if job_contract == "unknown":
+        return 5.0
+    if job_contract == "both":  # job accepts any type
+        return 10.0
+    return 10.0 if job_contract in preferred else 0.0
+
+
 def score_job(job_data: dict, profile) -> dict:
     """Score a job 0-10 against user profile using Claude Haiku. Returns empty dict if no API key or empty profile."""
     if not settings.ANTHROPIC_API_KEY:
@@ -28,8 +46,6 @@ CANDIDATE PROFILE:
 - Tech stack: {', '.join(profile.tech_stack) or 'Not specified'}
 - Minimum acceptable salary: {desired_salary_min}
 - Maximum desired salary: {desired_salary_max}
-- Contract preference: {profile.preferred_contract_type}
-- Work mode preference: {profile.preferred_work_mode}
 - Preferred roles: {', '.join(profile.preferred_roles) or 'Not specified'}
 - Competencies: {profile.competencies[:800] if profile.competencies else 'Not specified'}
 
@@ -38,44 +54,46 @@ JOB OPENING:
 - Company: {job_data.get('company', 'Unknown')}
 - Tech stack: {', '.join(job_data.get('tech_stack', [])) or 'Not specified'}
 - Salary: {salary_info}
-- Contract: {job_data.get('contract_type', 'unknown')}
-- Work mode: {job_data.get('work_mode', 'unknown')}
 - Description: {job_data.get('description', '')[:2000]}
 
 Scoring rules — apply strictly:
 - stack_match: use BOTH the "Tech stack" field AND any technologies mentioned in the description. If neither lists any technology, score 0.0.
-- salary_match: score 0.0 if no salary is specified. If salary is specified: compare against "Minimum acceptable salary" in the profile. Score 10.0 if job salary >= minimum acceptable salary. Score proportionally lower only if job salary is BELOW the minimum acceptable salary. Paying above the maximum desired salary is still 10.0 — never penalize for paying too much.
-- work_mode_match: score 0.0 if work mode is "unknown".
-- contract_match: score 0.0 if contract is "unknown".
+- salary_match: score 0.0 if no salary is specified. If salary is specified: compare against "Minimum acceptable salary". Score 10.0 if job salary >= minimum acceptable salary. Score proportionally lower only if job salary is BELOW the minimum. Paying above maximum desired salary is still 10.0.
 - role_match: always score based on title and description — never 0.0 unless completely unrelated.
-- The overall score is the average of all five criteria.
 
 Return ONLY valid JSON, no other text:
 {{
-  "score": <float 0.0-10.0>,
   "breakdown": {{
     "stack_match": <float 0.0-10.0>,
     "salary_match": <float 0.0-10.0>,
-    "role_match": <float 0.0-10.0>,
-    "work_mode_match": <float 0.0-10.0>,
-    "contract_match": <float 0.0-10.0>
+    "role_match": <float 0.0-10.0>
   }}
 }}"""
 
     client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
     response = client.messages.create(
         model="claude-haiku-4-5-20251001",
-        max_tokens=300,
+        max_tokens=200,
         messages=[{"role": "user", "content": prompt}],
     )
     text = response.content[0].text.strip()
-    # strip markdown code fences if present
     if text.startswith("```"):
         text = text.split("```")[1]
         if text.startswith("json"):
             text = text[4:]
         text = text.strip()
     try:
-        return json.loads(text)
+        result = json.loads(text)
     except json.JSONDecodeError:
         return {}
+
+    breakdown = result.get("breakdown", {})
+    breakdown["work_mode_match"] = _work_mode_match(
+        job_data.get("work_mode", "unknown"), profile.preferred_work_mode
+    )
+    breakdown["contract_match"] = _contract_match(
+        job_data.get("contract_type", "unknown"), profile.preferred_contract_type
+    )
+
+    result["score"] = round(sum(breakdown.values()) / len(breakdown), 2)
+    return result

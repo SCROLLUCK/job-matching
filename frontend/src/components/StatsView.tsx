@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import ReactECharts from "echarts-for-react";
 import { fetchStats, JobStats } from "../api";
 import TagInput from "./TagInput";
+import MultiSelect from "./MultiSelect";
 
 const LEVEL_OPTIONS = [
   { value: "junior", label: "Junior" },
@@ -10,80 +11,9 @@ const LEVEL_OPTIONS = [
   { value: "unknown", label: "Unknown" },
 ];
 
-const LEVEL_LABELS: Record<string, string> = {
-  junior: "Junior",
-  mid: "Mid",
-  senior: "Senior",
-  unknown: "Unknown",
-};
-
 function fmtSalary(v: number | null) {
   if (!v) return "—";
   return `R$ ${v.toLocaleString("pt-BR")}`;
-}
-
-function MultiSelect({
-  options,
-  value,
-  onChange,
-  placeholder,
-}: {
-  options: { value: string; label: string }[];
-  value: string[];
-  onChange: (v: string[]) => void;
-  placeholder: string;
-}) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function handler(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    }
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
-  function toggle(v: string) {
-    onChange(value.includes(v) ? value.filter((x) => x !== v) : [...value, v]);
-  }
-
-  const label =
-    value.length === 0
-      ? placeholder
-      : value.map((v) => LEVEL_LABELS[v] ?? v).join(", ");
-
-  return (
-    <div ref={ref} className="relative">
-      <button
-        onClick={() => setOpen((o) => !o)}
-        className="w-full flex items-center justify-between gap-2 text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white hover:border-gray-300 transition-colors"
-      >
-        <span className={value.length === 0 ? "text-gray-400" : "text-gray-700 truncate"}>{label}</span>
-        <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
-      </button>
-      {open && (
-        <div className="absolute right-0 z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg py-1">
-          {options.map((opt) => (
-            <label
-              key={opt.value}
-              className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer"
-            >
-              <input
-                type="checkbox"
-                checked={value.includes(opt.value)}
-                onChange={() => toggle(opt.value)}
-                className="rounded"
-              />
-              {opt.label}
-            </label>
-          ))}
-        </div>
-      )}
-    </div>
-  );
 }
 
 function dualBarOption(

@@ -1,6 +1,18 @@
 import { useState } from "react";
 import { UserProfile, saveProfile, rescoreJobs } from "../api";
 import TagInput from "./TagInput";
+import MultiSelect from "./MultiSelect";
+
+const WORK_MODE_OPTIONS = [
+  { value: "remote", label: "Remote" },
+  { value: "hybrid", label: "Hybrid" },
+  { value: "onsite", label: "On-site" },
+];
+
+const CONTRACT_OPTIONS = [
+  { value: "pj", label: "PJ" },
+  { value: "clt", label: "CLT" },
+];
 
 interface Props {
   profile: UserProfile;
@@ -119,28 +131,23 @@ export default function ProfileEditor({ profile, onSaved, showToast }: Props) {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Contract</label>
-              <select
+              <MultiSelect
+                options={CONTRACT_OPTIONS}
                 value={form.preferred_contract_type}
-                onChange={(e) => set("preferred_contract_type", e.target.value as UserProfile["preferred_contract_type"])}
-                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="both">PJ + CLT</option>
-                <option value="pj">PJ only</option>
-                <option value="clt">CLT only</option>
-              </select>
+                onChange={(v) => set("preferred_contract_type", v)}
+                placeholder="Any"
+                allLabel="Any"
+              />
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Work mode</label>
-              <select
+              <MultiSelect
+                options={WORK_MODE_OPTIONS}
                 value={form.preferred_work_mode}
-                onChange={(e) => set("preferred_work_mode", e.target.value as UserProfile["preferred_work_mode"])}
-                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="any">Any</option>
-                <option value="remote">Remote</option>
-                <option value="hybrid">Hybrid</option>
-                <option value="onsite">On-site</option>
-              </select>
+                onChange={(v) => set("preferred_work_mode", v)}
+                placeholder="Any"
+                allLabel="Any"
+              />
             </div>
           </div>
         </div>

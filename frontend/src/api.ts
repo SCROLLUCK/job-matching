@@ -34,8 +34,8 @@ export interface UserProfile {
   tech_stack: string[];
   desired_salary_min: number | null;
   desired_salary_max: number | null;
-  preferred_contract_type: "pj" | "clt" | "both";
-  preferred_work_mode: "remote" | "hybrid" | "onsite" | "any";
+  preferred_contract_type: string[];
+  preferred_work_mode: string[];
   preferred_roles: string[];
   updated_at: string;
 }
