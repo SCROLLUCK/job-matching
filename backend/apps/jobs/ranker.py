@@ -95,5 +95,30 @@ Return ONLY valid JSON, no other text:
         job_data.get("contract_type", "unknown"), profile.preferred_contract_type
     )
 
-    result["score"] = round(sum(breakdown.values()) / len(breakdown), 2)
+    result["score"] = _weighted_score(breakdown, profile.get_weights())
     return result
+
+
+_BREAKDOWN_KEY_MAP = {
+    "stack_match": "stack",
+    "salary_match": "salary",
+    "role_match": "role",
+    "work_mode_match": "work_mode",
+    "contract_match": "contract",
+}
+
+
+def _weighted_score(breakdown: dict, weights: dict) -> float:
+    total_weight = 0.0
+    total = 0.0
+    for bk, wk in _BREAKDOWN_KEY_MAP.items():
+        if bk not in breakdown:
+            continue
+        w = weights.get(wk, 2)
+        total += breakdown[bk] * w
+        total_weight += w
+    return round(total / total_weight, 2) if total_weight else 0.0
+
+
+def rescore_from_breakdown(breakdown: dict, weights: dict) -> float:
+    return _weighted_score(breakdown, weights)

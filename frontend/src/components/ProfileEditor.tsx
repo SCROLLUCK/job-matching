@@ -14,6 +14,41 @@ const CONTRACT_OPTIONS = [
   { value: "clt", label: "CLT" },
 ];
 
+const WEIGHT_CRITERIA: { key: string; label: string }[] = [
+  { key: "stack", label: "Tech stack" },
+  { key: "salary", label: "Salary" },
+  { key: "role", label: "Role" },
+  { key: "work_mode", label: "Work mode" },
+  { key: "contract", label: "Contract" },
+];
+
+const WEIGHT_LEVELS = [
+  { value: 1, label: "Low" },
+  { value: 2, label: "Medium" },
+  { value: 3, label: "High" },
+];
+
+function WeightToggle({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  return (
+    <div className="flex rounded-md border border-gray-200 overflow-hidden text-xs font-medium">
+      {WEIGHT_LEVELS.map((level) => (
+        <button
+          key={level.value}
+          type="button"
+          onClick={() => onChange(level.value)}
+          className={`flex-1 py-1 transition-colors ${
+            value === level.value
+              ? "bg-blue-600 text-white"
+              : "bg-white text-gray-500 hover:bg-gray-50"
+          }`}
+        >
+          {level.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 interface Props {
   profile: UserProfile;
   onSaved: (p: UserProfile) => void;
@@ -30,6 +65,11 @@ export default function ProfileEditor({ profile, onSaved, showToast, startProgre
 
   const set = <K extends keyof UserProfile>(key: K, value: UserProfile[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
+
+  const defaultWeights: Record<string, number> = { stack: 2, salary: 2, role: 2, work_mode: 2, contract: 2 };
+  const weights: Record<string, number> = { ...defaultWeights, ...(form.score_weights || {}) };
+  const setWeight = (key: string, value: number) =>
+    setForm((f) => ({ ...f, score_weights: { ...weights, [key]: value } }));
 
   async function handleSave() {
     setSaving(true);
@@ -95,6 +135,17 @@ export default function ProfileEditor({ profile, onSaved, showToast, startProgre
             placeholder="Describe your skills, experience, technologies you know, years of experience, etc."
             className="flex-1 w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
           />
+          <div className="mt-4">
+            <label className="block text-xs font-medium text-gray-600 mb-2">Scoring weights</label>
+            <div className="space-y-2">
+              {WEIGHT_CRITERIA.map(({ key, label }) => (
+                <div key={key} className="flex items-center gap-3">
+                  <span className="text-xs text-gray-500 w-20 shrink-0">{label}</span>
+                  <WeightToggle value={weights[key] ?? 2} onChange={(v) => setWeight(key, v)} />
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
         <div className="space-y-4">

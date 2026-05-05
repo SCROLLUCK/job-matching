@@ -37,6 +37,7 @@ export interface UserProfile {
   preferred_contract_type: string[];
   preferred_work_mode: string[];
   preferred_roles: string[];
+  score_weights: Record<string, number>;
   updated_at: string;
 }
 
