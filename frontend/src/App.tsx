@@ -43,20 +43,30 @@ export default function App() {
   async function handleScrape() {
     setScraping(true);
     startProgress("Scraping");
+    const counts: Record<string, number> = {};
     try {
-      const result = await runScrape();
-      stopProgress();
-      const errors = Object.keys(result).filter((k) => k.includes("error"));
-      if (errors.length) {
-        showToast("Scrape finished with errors", "error");
-      } else {
-        const counts = Object.entries(result)
-          .filter(([k]) => k !== "scraped_at")
-          .map(([k, v]) => `${k}: +${v}`)
-          .join(" · ");
-        showToast(counts || "No new jobs found", "success");
-      }
-      fetchJobs(filters).then(setJobs);
+      await runScrape((event) => {
+        if (event.type === "source_done") {
+          counts[event.source as string] = event.count as number;
+          const detail = Object.entries(counts).map(([s, n]) => `${s} +${n}`).join(" · ");
+          updateProgress(detail);
+        } else if (event.type === "source_start") {
+          const pending = [
+            ...Object.entries(counts).map(([s, n]) => `${s} +${n}`),
+            `${event.source}…`,
+          ].join(" · ");
+          updateProgress(pending);
+        } else if (event.type === "complete") {
+          stopProgress();
+          const hasErrors = Object.keys(event).some((k) => k.includes("error"));
+          const summary = Object.entries(counts).map(([s, n]) => `${s}: +${n}`).join(" · ");
+          showToast(
+            hasErrors ? "Scrape finished with errors" : summary || "No new jobs found",
+            hasErrors ? "error" : "success",
+          );
+          fetchJobs(filters).then(setJobs);
+        }
+      });
     } catch {
       stopProgress();
       showToast("Scrape failed", "error");
@@ -163,6 +173,7 @@ export default function App() {
               onSaved={setProfile}
               showToast={showToast}
               startProgress={startProgress}
+              updateProgress={updateProgress}
               stopProgress={stopProgress}
             />
           </div>

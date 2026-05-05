@@ -12,16 +12,26 @@ export function useProgressToast() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startRef = useRef(0);
   const labelRef = useRef("");
+  const detailRef = useRef("");
+
+  const _show = useCallback(() => {
+    const elapsed = Math.floor((Date.now() - startRef.current) / 1000);
+    const detail = detailRef.current ? ` · ${detailRef.current}` : "";
+    showToast(`${labelRef.current}${detail} · ${fmtElapsed(elapsed)}`, "loading");
+  }, [showToast]);
 
   const startProgress = useCallback((label: string) => {
     labelRef.current = label;
+    detailRef.current = "";
     startRef.current = Date.now();
     showToast(`${label} · 0s`, "loading");
-    timerRef.current = setInterval(() => {
-      const elapsed = Math.floor((Date.now() - startRef.current) / 1000);
-      showToast(`${labelRef.current} · ${fmtElapsed(elapsed)}`, "loading");
-    }, 1000);
-  }, [showToast]);
+    timerRef.current = setInterval(_show, 1000);
+  }, [showToast, _show]);
+
+  const updateProgress = useCallback((detail: string) => {
+    detailRef.current = detail;
+    _show();
+  }, [_show]);
 
   const stopProgress = useCallback(() => {
     if (timerRef.current) {
@@ -30,5 +40,5 @@ export function useProgressToast() {
     }
   }, []);
 
-  return { toast, showToast, clearToast, startProgress, stopProgress };
+  return { toast, showToast, clearToast, startProgress, updateProgress, stopProgress };
 }

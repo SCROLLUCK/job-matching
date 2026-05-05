@@ -78,20 +78,42 @@ export async function saveProfile(
   return res.json();
 }
 
+async function readSSE(res: Response, onEvent: (data: Record<string, unknown>) => void) {
+  const reader = res.body!.getReader();
+  const decoder = new TextDecoder();
+  let buf = "";
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += decoder.decode(value, { stream: true });
+    const parts = buf.split("\n\n");
+    buf = parts.pop() ?? "";
+    for (const part of parts) {
+      const line = part.trim();
+      if (line.startsWith("data: ")) {
+        try { onEvent(JSON.parse(line.slice(6))); } catch { /* ignore */ }
+      }
+    }
+  }
+}
+
 export async function runScrape(
+  onEvent: (data: Record<string, unknown>) => void,
   sources?: string[],
-): Promise<Record<string, unknown>> {
+): Promise<void> {
   const res = await fetch(`${BASE}/api/scraper/run/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(sources ? { sources } : {}),
   });
-  return res.json();
+  await readSSE(res, onEvent);
 }
 
-export async function rescoreJobs(): Promise<{ updated: number }> {
+export async function rescoreJobs(
+  onEvent: (data: Record<string, unknown>) => void,
+): Promise<void> {
   const res = await fetch(`${BASE}/api/scraper/rescore/`, { method: "POST" });
-  return res.json();
+  await readSSE(res, onEvent);
 }
 
 export interface JobStats {
