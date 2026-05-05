@@ -29,9 +29,8 @@ export default function MultiSelect({ options, value, onChange, placeholder, all
     onChange(value.includes(v) ? value.filter((x) => x !== v) : [...value, v]);
   }
 
-  const allSelected = value.length === 0 || value.length === options.length;
-  const label = allSelected
-    ? allLabel ?? placeholder
+  const label = value.length === 0
+    ? placeholder
     : value.map((v) => options.find((o) => o.value === v)?.label ?? v).join(", ");
 
   return (
@@ -41,7 +40,7 @@ export default function MultiSelect({ options, value, onChange, placeholder, all
         onClick={() => setOpen((o) => !o)}
         className="w-full flex items-center justify-between gap-2 text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white hover:border-gray-300 transition-colors"
       >
-        <span className={allSelected ? "text-gray-400" : "text-gray-700 truncate"}>{label}</span>
+        <span className={value.length === 0 ? "text-gray-400" : "text-gray-700 truncate"}>{label}</span>
         <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
         </svg>
