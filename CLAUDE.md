@@ -1,6 +1,6 @@
 # job-matching
 
-Job aggregator that scrapes LinkedIn, Nerdin, GeekhHunter, and Indeed and ranks results by compatibility with the user profile.
+Job aggregator that scrapes LinkedIn, Nerdin, GeekHunter, and Indeed and ranks results by compatibility with the user profile.
 
 ## Tech Stack
 
@@ -10,7 +10,7 @@ Job aggregator that scrapes LinkedIn, Nerdin, GeekhHunter, and Indeed and ranks 
 ### Backend
 - Django REST Framework (Python 3.12)
 - APScheduler for periodic scraping
-- Playwright (GeekhHunter, Indeed — Cloudflare bypass via fresh context + `/rpc/jobdescs` RPC endpoint)
+- Playwright (GeekHunter, Indeed — Cloudflare bypass via fresh context + `/rpc/jobdescs` RPC endpoint)
 - requests + BeautifulSoup4 (Nerdin, LinkedIn)
 - Claude API (Haiku) for job scoring
 

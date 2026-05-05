@@ -1,10 +1,10 @@
 # Job Matching
 
-Job aggregator that scrapes LinkedIn, Nerdin, GeekhHunter, and Indeed, then ranks results by compatibility with your profile using Claude AI.
+Job aggregator that scrapes LinkedIn, Nerdin, GeekHunter, and Indeed, then ranks results by compatibility with your profile using Claude AI.
 
 ## Features
 
-- Scrapes job listings from LinkedIn, Nerdin, GeekhHunter, and Indeed
+- Scrapes job listings from LinkedIn, Nerdin, GeekHunter, and Indeed
 - Scores each job (0–10) across five criteria: stack, salary, role, work mode, and contract
 - Editable candidate profile (tech stack, salary range, contract preference, work mode, competencies)
 - Re-score all jobs after updating your profile
@@ -22,7 +22,7 @@ Job aggregator that scrapes LinkedIn, Nerdin, GeekhHunter, and Indeed, then rank
 | Backend  | Django REST Framework (Python 3.12)             |
 | Database | PostgreSQL                                      |
 | Infra    | Docker Compose (`restart: always` on all services) |
-| Scraping | requests + BeautifulSoup4 (LinkedIn, Nerdin) / Playwright (GeekhHunter, Indeed) / curl-cffi (Indeed RPC) |
+| Scraping | requests + BeautifulSoup4 (LinkedIn, Nerdin) / Playwright (GeekHunter, Indeed) / curl-cffi (Indeed RPC) |
 | AI       | Anthropic Claude Haiku via SDK                  |
 
 ## Getting Started

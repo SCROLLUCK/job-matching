@@ -5,7 +5,7 @@ import ScoreBar from "./ScoreBar";
 const SOURCE_LABELS: Record<string, string> = {
   linkedin: "LinkedIn",
   nerdin: "Nerdin",
-  geekhunter: "GeekhHunter",
+  geekhunter: "GeekHunter",
   indeed: "Indeed",
 };
 

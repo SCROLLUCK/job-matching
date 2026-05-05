@@ -86,10 +86,13 @@ def _parse_detail_page(text):
     description = ""
 
     for i, line in enumerate(lines[5:], start=5):
-        if "Faixa de Remuneração" in line and i + 1 < len(lines):
-            sal = lines[i + 1]
-            if sal != "Não informada":
-                salary_min, salary_max = _parse_salary(sal)
+        if "Faixa de Remuneração" in line:
+            for j in range(i + 1, min(i + 4, len(lines))):
+                if lines[j] == "Não informada":
+                    break
+                if "r$" in lines[j].lower():
+                    salary_min, salary_max = _parse_salary(lines[j])
+                    break
         elif "Nível de Experiência" in line and i + 1 < len(lines):
             level = _detect_level(lines[i + 1])
         elif any(m in line for m in ["Tarefas e Responsabilidades", "Requisitos", "Sobre a ", "Descrição"]):
@@ -109,6 +112,23 @@ def _parse_detail_page(text):
         "contract_type": contract_type,
         "description": description,
     }
+
+
+def _fetch_detail(url):
+    """Returns (salary_min, salary_max, work_mode) by re-fetching a single GeekhHunter job page."""
+    from playwright.sync_api import sync_playwright
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch(args=["--no-sandbox", "--disable-dev-shm-usage"])
+            page = browser.new_page()
+            page.goto(url, wait_until="domcontentloaded", timeout=30000)
+            page.wait_for_timeout(2000)
+            text = page.evaluate("document.body.innerText")
+            browser.close()
+        data = _parse_detail_page(text)
+        return data.get("salary_min"), data.get("salary_max"), data.get("work_mode", "unknown")
+    except Exception:
+        return None, None, "unknown"
 
 
 def fetch_jobs(pages=3):

@@ -53,7 +53,7 @@ export default function FilterDrawer({ filters, onChange }: Props) {
         { value: "", label: "All sources" },
         { value: "linkedin", label: "LinkedIn" },
         { value: "nerdin", label: "Nerdin" },
-        { value: "geekhunter", label: "GeekhHunter" },
+        { value: "geekhunter", label: "GeekHunter" },
         { value: "indeed", label: "Indeed" },
       ]} />
 

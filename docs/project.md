@@ -14,7 +14,7 @@
 |-------------|-------------------------------|----------------|
 | LinkedIn    | requests + BeautifulSoup      | `linkedin`     |
 | Nerdin      | requests + BeautifulSoup      | `nerdin`       |
-| GeekhHunter | Playwright (Next.js SPA)      | `geekhunter`   |
+| GeekHunter | Playwright (Next.js SPA)      | `geekhunter`   |
 
 ### Scrape flow
 1. Each scraper fetches the job listing pages

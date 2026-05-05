@@ -6,7 +6,7 @@ class Job(models.Model):
     SOURCE_CHOICES = [
         ("linkedin", "LinkedIn"),
         ("nerdin", "Nerdin"),
-        ("geekhunter", "GeekhHunter"),
+        ("geekhunter", "GeekHunter"),
         ("indeed", "Indeed"),
     ]
     CONTRACT_CHOICES = [
