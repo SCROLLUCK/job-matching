@@ -1,8 +1,65 @@
 import re
+from urllib.parse import urlencode
+
 import requests
 from bs4 import BeautifulSoup
 
 BASE_URL = "https://nerdin.com.br"
+
+# filtroPlataforma: normalized tech name → list of Nerdin IDs
+_PLATAFORMA: dict[str, list[int]] = {
+    ".net": [33, 132, 133], "asp.net": [67, 133], "c#": [26], "c++": [85],
+    "python": [45], "django": [144], "fastapi": [45], "flask": [45],
+    "node": [62], "node.js": [62], "javascript": [61], "typescript": [163],
+    "react": [76], "react native": [143], "angular": [75], "vue": [130],
+    "java": [28], "spring": [111], "kotlin": [141],
+    "golang": [122], "go": [122], "rust": [],
+    "php": [25], "laravel": [145], "ruby": [68],
+    "sql": [1], "mysql": [3], "postgresql": [12], "postgres": [12],
+    "mongodb": [4], "redis": [], "cassandra": [44],
+    "docker": [99], "kubernetes": [98], "aws": [108], "azure": [20], "gcp": [151],
+    "git": [97], "linux": [34], "terraform": [161], "kafka": [112],
+    "flutter": [127], "android": [27], "ios": [23],
+    "assembly": [90], "iot": [134], "power bi": [18], "powerbi": [18],
+    "scrum": [36], "agile": [100], "jira": [101],
+}
+
+# filtro_cargo: keyword in role (lowercase) → cargo IDs
+_CARGO: dict[str, list[int]] = {
+    "developer": [8], "desenvolvedor": [8], "programmer": [4], "programador": [4],
+    "engineer": [10], "engenheiro": [10],
+    "analyst": [17], "analista": [17],
+    "técnico": [19], "tecnico": [19], "technical": [19],
+    "firmware": [19], "embedded": [10],
+    "architect": [9], "arquiteto": [9],
+    "tech lead": [24], "lead": [5],
+    "manager": [3], "gerente": [3],
+    "consultant": [7], "consultor": [7],
+    "dba": [1], "data scientist": [14], "cientista": [14],
+    "full stack": [8], "fullstack": [8], "backend": [8], "frontend": [8],
+    "devops": [10],
+}
+
+
+def _nerdin_filter_ids(preferred_roles: list, tech_stack: list) -> tuple[list, list]:
+    plat: set[int] = set()
+    for tech in tech_stack:
+        key = tech.lower()
+        if key in _PLATAFORMA:
+            plat.update(_PLATAFORMA[key])
+        else:
+            for k, ids in _PLATAFORMA.items():
+                if k in key or key in k:
+                    plat.update(ids)
+
+    cargo: set[int] = set()
+    for role in preferred_roles:
+        role_lower = role.lower()
+        for keyword, ids in _CARGO.items():
+            if keyword in role_lower:
+                cargo.update(ids)
+
+    return sorted(plat - {0}), sorted(cargo - {0})
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -145,10 +202,18 @@ def _parse_card(card):
     }
 
 
-def fetch_jobs(pages=3, keywords=None, filter_terms=None):
+def fetch_jobs(pages=3, preferred_roles=None, tech_stack=None, filter_terms=None):
+    plat_ids, _cargo_ids = _nerdin_filter_ids(preferred_roles or [], tech_stack or [])
+    # Only filtro_plataforma — combining with filtro_cargo uses AND logic and kills results
+
     jobs = []
     for page in range(1, pages + 1):
-        resp = requests.get(f"{BASE_URL}/vagas.php?pagina={page}", headers=HEADERS, timeout=15)
+        params = [("pagina", page)]
+        for pid in plat_ids:
+            params.append(("filtro_plataforma[]", pid))
+        url = f"{BASE_URL}/vagas.php?{urlencode(params)}"
+
+        resp = requests.get(url, headers=HEADERS, timeout=15)
         if resp.status_code != 200:
             break
         soup = BeautifulSoup(resp.text, "lxml")
@@ -159,12 +224,15 @@ def fetch_jobs(pages=3, keywords=None, filter_terms=None):
             job = _parse_card(card)
             if not job:
                 continue
-            if filter_terms and not _matches(job["title"], "", filter_terms):
-                continue
+            # Text post-filter only as fallback when no Nerdin IDs matched
+            if filter_terms and not plat_ids:
+                if not _matches(job["title"], "", filter_terms):
+                    continue
             detail = _fetch_detail(job["url"])
             job["description"] = detail["description"]
-            if filter_terms and not _matches(job["title"], job["description"], filter_terms):
-                continue
+            if filter_terms and not plat_ids:
+                if not _matches(job["title"], job["description"], filter_terms):
+                    continue
             if detail["contract_type"] != "unknown":
                 job["contract_type"] = detail["contract_type"]
             if detail["experience_level"] != "unknown":

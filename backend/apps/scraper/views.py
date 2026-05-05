@@ -19,7 +19,7 @@ def _scraper_kwargs(profile):
     search = roles[0] if roles else (techs[0] if techs else "desenvolvedor")
     filter_terms = roles + techs[:5] if (roles or techs) else []
     return {
-        "nerdin":      {"pages": 3, "filter_terms": filter_terms or None},
+        "nerdin":      {"pages": 3, "preferred_roles": roles, "tech_stack": techs, "filter_terms": filter_terms or None},
         "linkedin":    {"pages": 3, "keywords": search},
         "geekhunter":  {"pages": 2, "filter_terms": filter_terms or None},
         "indeed":      {"pages": 3, "keywords": search},
