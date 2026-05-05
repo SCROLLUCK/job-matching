@@ -17,7 +17,7 @@ export default function App() {
   const [tab, setTab] = useState<Tab>("jobs");
   const [loading, setLoading] = useState(false);
   const [scraping, setScraping] = useState(false);
-  const { toast, showToast, clearToast, startProgress, stopProgress } = useProgressToast();
+  const { toast, showToast, clearToast, startProgress, updateProgress, stopProgress } = useProgressToast();
 
   const profileFilled = profile !== null && (profile.competencies.trim().length > 0 || profile.tech_stack.length > 0);
 
