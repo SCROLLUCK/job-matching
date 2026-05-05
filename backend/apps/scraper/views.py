@@ -24,6 +24,11 @@ def _sse(data: dict) -> str:
     return f"data: {json.dumps(data)}\n\n"
 
 
+def _clean_title(title: str) -> str:
+    import re
+    return re.sub(r"\s+\b(NEW|NOVO|NOVA)\b\s*$", "", title, flags=re.IGNORECASE).strip()
+
+
 def _save_jobs(job_list):
     profile = UserProfile.get()
     created = 0
@@ -35,7 +40,7 @@ def _save_jobs(job_list):
         result = score_job(data, profile)
         Job.objects.create(
             external_id=data["external_id"],
-            title=data["title"],
+            title=_clean_title(data["title"]),
             company=data.get("company", ""),
             description=data.get("description", ""),
             url=data["url"],
