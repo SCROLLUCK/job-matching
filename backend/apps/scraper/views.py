@@ -21,7 +21,7 @@ def _scraper_kwargs(profile):
     return {
         "nerdin":      {"pages": 3, "preferred_roles": roles, "tech_stack": techs, "filter_terms": filter_terms or None},
         "linkedin":    {"pages": 3, "keywords": search},
-        "geekhunter":  {"pages": 2, "filter_terms": filter_terms or None},
+        "geekhunter":  {"pages": 2, "keywords": search, "filter_terms": filter_terms or None},
         "indeed":      {"pages": 3, "keywords": search},
     }
 

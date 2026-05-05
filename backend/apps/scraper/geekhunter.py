@@ -143,13 +143,39 @@ def fetch_jobs(pages=3, keywords=None, filter_terms=None):
 
         # Collect job URLs from listing pages
         job_urls = []
+        search_applied = False
         for page_num in range(1, pages + 1):
-            url = f"{JOBS_URL}?page={page_num}" if page_num > 1 else JOBS_URL
-            try:
-                page.goto(url, wait_until="domcontentloaded", timeout=30000)
-                page.wait_for_timeout(3000)
-            except Exception:
-                break
+            if search_applied:
+                # After search, GeekHunter resets to page 1 of filtered results;
+                # click next-page or stop — check if current page has a "next" link
+                next_link = page.query_selector("a[aria-label*='próxima'], a[aria-label*='next'], [data-testid='pagination-next']")
+                if next_link:
+                    try:
+                        next_link.click()
+                        page.wait_for_timeout(3000)
+                    except Exception:
+                        break
+                else:
+                    break
+            else:
+                url = f"{JOBS_URL}?page={page_num}" if page_num > 1 else JOBS_URL
+                try:
+                    page.goto(url, wait_until="domcontentloaded", timeout=30000)
+                    page.wait_for_timeout(3000)
+                except Exception:
+                    break
+
+                # Apply keyword search on the first page
+                if keywords and page_num == 1:
+                    try:
+                        search_el = page.query_selector("input[placeholder*='cargo'], input[placeholder*='keyword'], input[type='search']")
+                        if search_el:
+                            search_el.fill(keywords)
+                            page.keyboard.press("Enter")
+                            page.wait_for_timeout(3000)
+                            search_applied = True
+                    except Exception:
+                        pass
 
             links = page.query_selector_all("a[href]")
             found = 0
