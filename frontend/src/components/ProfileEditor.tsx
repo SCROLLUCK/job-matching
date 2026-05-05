@@ -18,9 +18,11 @@ interface Props {
   profile: UserProfile;
   onSaved: (p: UserProfile) => void;
   showToast: (message: string, type: "success" | "error") => void;
+  startProgress: (label: string) => void;
+  stopProgress: () => void;
 }
 
-export default function ProfileEditor({ profile, onSaved, showToast }: Props) {
+export default function ProfileEditor({ profile, onSaved, showToast, startProgress, stopProgress }: Props) {
   const [form, setForm] = useState(profile);
   const [saving, setSaving] = useState(false);
   const [rescoring, setRescoring] = useState(false);
@@ -43,10 +45,13 @@ export default function ProfileEditor({ profile, onSaved, showToast }: Props) {
 
   async function handleRescore() {
     setRescoring(true);
+    startProgress("Re-scoring jobs");
     try {
       const result = await rescoreJobs();
+      stopProgress();
       showToast(`Re-scored ${result.updated} jobs`, "success");
     } catch {
+      stopProgress();
       showToast("Failed to re-score jobs", "error");
     } finally {
       setRescoring(false);

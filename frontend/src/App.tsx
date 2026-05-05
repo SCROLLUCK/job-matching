@@ -5,7 +5,7 @@ import FilterDrawer from "./components/FilterDrawer";
 import ProfileEditor from "./components/ProfileEditor";
 import StatsView from "./components/StatsView";
 import Toast from "./components/Toast";
-import { useToast } from "./hooks/useToast";
+import { useProgressToast } from "./hooks/useProgressToast";
 
 type Tab = "jobs" | "applied" | "stats" | "profile";
 
@@ -17,7 +17,7 @@ export default function App() {
   const [tab, setTab] = useState<Tab>("jobs");
   const [loading, setLoading] = useState(false);
   const [scraping, setScraping] = useState(false);
-  const { toast, showToast, clearToast } = useToast();
+  const { toast, showToast, clearToast, startProgress, stopProgress } = useProgressToast();
 
   const profileFilled = profile !== null && (profile.competencies.trim().length > 0 || profile.tech_stack.length > 0);
 
@@ -42,8 +42,10 @@ export default function App() {
 
   async function handleScrape() {
     setScraping(true);
+    startProgress("Scraping");
     try {
       const result = await runScrape();
+      stopProgress();
       const errors = Object.keys(result).filter((k) => k.includes("error"));
       if (errors.length) {
         showToast("Scrape finished with errors", "error");
@@ -56,6 +58,7 @@ export default function App() {
       }
       fetchJobs(filters).then(setJobs);
     } catch {
+      stopProgress();
       showToast("Scrape failed", "error");
     } finally {
       setScraping(false);
@@ -155,7 +158,13 @@ export default function App() {
 
         {tab === "profile" && profile && (
           <div className="w-full">
-            <ProfileEditor profile={profile} onSaved={setProfile} showToast={showToast} />
+            <ProfileEditor
+              profile={profile}
+              onSaved={setProfile}
+              showToast={showToast}
+              startProgress={startProgress}
+              stopProgress={stopProgress}
+            />
           </div>
         )}
       </main>
