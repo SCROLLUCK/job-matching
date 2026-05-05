@@ -128,7 +128,7 @@ def _fetch_descriptions(browser, jks):
     return results
 
 
-def fetch_jobs(keywords="desenvolvedor", location="Brasil", pages=3):
+def fetch_jobs(keywords="desenvolvedor", location="Brasil", pages=3, filter_terms=None):
     stubs = []
     with sync_playwright() as p:
         browser = p.chromium.launch(args=BROWSER_ARGS)

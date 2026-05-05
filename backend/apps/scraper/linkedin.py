@@ -151,7 +151,7 @@ def _parse_item(item):
     }
 
 
-def fetch_jobs(keywords="desenvolvedor", location="Brazil", pages=3):
+def fetch_jobs(keywords="desenvolvedor", location="Brazil", pages=3, filter_terms=None):
     jobs = []
     for page in range(pages):
         params = {

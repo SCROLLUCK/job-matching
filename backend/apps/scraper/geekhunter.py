@@ -132,7 +132,7 @@ def _fetch_detail(url):
         return None, None, "unknown"
 
 
-def fetch_jobs(pages=3):
+def fetch_jobs(pages=3, keywords=None, filter_terms=None):
     from playwright.sync_api import sync_playwright
 
     jobs = []
@@ -194,4 +194,12 @@ def fetch_jobs(pages=3):
                 continue
 
         browser.close()
+
+    if filter_terms:
+        jobs = [j for j in jobs if _matches(j["title"], j.get("description", ""), filter_terms)]
     return jobs
+
+
+def _matches(title: str, description: str, terms: list[str]) -> bool:
+    haystack = (title + " " + description).lower()
+    return any(t.lower() in haystack for t in terms)

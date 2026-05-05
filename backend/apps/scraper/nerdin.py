@@ -145,7 +145,7 @@ def _parse_card(card):
     }
 
 
-def fetch_jobs(pages=3):
+def fetch_jobs(pages=3, keywords=None, filter_terms=None):
     jobs = []
     for page in range(1, pages + 1):
         resp = requests.get(f"{BASE_URL}/vagas.php?pagina={page}", headers=HEADERS, timeout=15)
@@ -157,18 +157,28 @@ def fetch_jobs(pages=3):
             break
         for card in cards:
             job = _parse_card(card)
-            if job:
-                detail = _fetch_detail(job["url"])
-                job["description"] = detail["description"]
-                if detail["contract_type"] != "unknown":
-                    job["contract_type"] = detail["contract_type"]
-                if detail["experience_level"] != "unknown":
-                    job["experience_level"] = detail["experience_level"]
-                if detail["work_mode"] is not None:
-                    job["work_mode"] = detail["work_mode"]
-                    job["is_remote"] = detail["work_mode"] == "remote"
-                if detail["salary_min"] and not job["salary_min"]:
-                    job["salary_min"] = detail["salary_min"]
-                    job["salary_max"] = detail["salary_max"]
-                jobs.append(job)
+            if not job:
+                continue
+            if filter_terms and not _matches(job["title"], "", filter_terms):
+                continue
+            detail = _fetch_detail(job["url"])
+            job["description"] = detail["description"]
+            if filter_terms and not _matches(job["title"], job["description"], filter_terms):
+                continue
+            if detail["contract_type"] != "unknown":
+                job["contract_type"] = detail["contract_type"]
+            if detail["experience_level"] != "unknown":
+                job["experience_level"] = detail["experience_level"]
+            if detail["work_mode"] is not None:
+                job["work_mode"] = detail["work_mode"]
+                job["is_remote"] = detail["work_mode"] == "remote"
+            if detail["salary_min"] and not job["salary_min"]:
+                job["salary_min"] = detail["salary_min"]
+                job["salary_max"] = detail["salary_max"]
+            jobs.append(job)
     return jobs
+
+
+def _matches(title: str, description: str, terms: list[str]) -> bool:
+    haystack = (title + " " + description).lower()
+    return any(t.lower() in haystack for t in terms)

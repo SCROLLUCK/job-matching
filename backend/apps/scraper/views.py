@@ -12,11 +12,25 @@ from apps.profile.models import UserProfile
 
 from . import geekhunter, indeed, linkedin, nerdin
 
+
+def _scraper_kwargs(profile):
+    roles = profile.preferred_roles or []
+    techs = profile.tech_stack or []
+    search = roles[0] if roles else (techs[0] if techs else "desenvolvedor")
+    filter_terms = roles + techs[:5] if (roles or techs) else []
+    return {
+        "nerdin":      {"pages": 3, "filter_terms": filter_terms or None},
+        "linkedin":    {"pages": 3, "keywords": search},
+        "geekhunter":  {"pages": 2, "filter_terms": filter_terms or None},
+        "indeed":      {"pages": 3, "keywords": search},
+    }
+
+
 SCRAPERS = {
-    "nerdin": (nerdin.fetch_jobs, {"pages": 3}),
-    "linkedin": (linkedin.fetch_jobs, {"pages": 3}),
-    "geekhunter": (geekhunter.fetch_jobs, {"pages": 2}),
-    "indeed": (indeed.fetch_jobs, {"pages": 3}),
+    "nerdin": nerdin.fetch_jobs,
+    "linkedin": linkedin.fetch_jobs,
+    "geekhunter": geekhunter.fetch_jobs,
+    "indeed": indeed.fetch_jobs,
 }
 
 
@@ -60,14 +74,16 @@ def _save_jobs(job_list):
 
 
 def _stream_scrape(sources):
+    profile = UserProfile.get()
+    kwargs_map = _scraper_kwargs(profile)
     results = {}
     for source in sources:
-        fn, kwargs = SCRAPERS.get(source, (None, {}))
+        fn = SCRAPERS.get(source)
         if not fn:
             continue
         yield _sse({"type": "source_start", "source": source})
         try:
-            jobs = fn(**kwargs)
+            jobs = fn(**kwargs_map.get(source, {}))
             count = _save_jobs(jobs)
             results[source] = count
             yield _sse({"type": "source_done", "source": source, "count": count})
