@@ -40,7 +40,8 @@ def _detect_level(text):
 
 
 def _parse_salary(text):
-    cleaned = text.replace(".", "").replace(",", "").replace("R$", "").strip()
+    cleaned = re.sub(r",\d{2}", "", text)  # remove decimal part before stripping dots
+    cleaned = cleaned.replace(".", "").replace("R$", "").strip()
     nums = [int(n) for n in re.findall(r"\d+", cleaned) if int(n) > 500]
     if len(nums) >= 2:
         return nums[0], nums[1]
