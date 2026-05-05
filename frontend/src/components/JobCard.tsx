@@ -77,7 +77,7 @@ export default function JobCard({ job }: { job: Job }) {
         </div>
         <div className="flex items-center gap-1.5 text-gray-500">
           <span className="text-gray-400 w-16 shrink-0">Contract</span>
-          <span className="text-gray-700 font-medium uppercase">{job.contract_type !== "unknown" ? job.contract_type : "—"}</span>
+          <span className="text-gray-700 font-medium uppercase">{job.contract_type === "both" ? "PJ + CLT" : job.contract_type !== "unknown" ? job.contract_type : "—"}</span>
         </div>
         <div className="flex items-center gap-1.5 text-gray-500">
           <span className="text-gray-400 w-16 shrink-0">Work mode</span>

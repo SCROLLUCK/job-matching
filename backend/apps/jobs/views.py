@@ -69,7 +69,16 @@ class JobListView(APIView):
 
         contract_type = request.query_params.get("contract_type")
         if contract_type:
-            qs = qs.filter(contract_type__in=[c for c in contract_type.split(",") if c])
+            selected = [c for c in contract_type.split(",") if c]
+            effective = set()
+            for c in selected:
+                if c == "pj":
+                    effective |= {"pj", "both"}
+                elif c == "clt":
+                    effective |= {"clt", "both"}
+                else:
+                    effective.add(c)
+            qs = qs.filter(contract_type__in=effective)
 
         work_mode = request.query_params.get("work_mode")
         if work_mode:
