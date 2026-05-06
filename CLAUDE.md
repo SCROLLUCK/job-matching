@@ -12,13 +12,44 @@ Job aggregator that scrapes LinkedIn, Nerdin, GeekHunter, and Indeed and ranks r
 - APScheduler for periodic scraping
 - Playwright (GeekHunter, Indeed — Cloudflare bypass via fresh context + `/rpc/jobdescs` RPC endpoint)
 - requests + BeautifulSoup4 (Nerdin, LinkedIn)
-- Claude API (Haiku) for job scoring
+- Claude API (`claude-haiku-4-5-20251001`) for job scoring and profile autofill
 
 ### Database
 - PostgreSQL
 
 ### Infrastructure
 - Docker (frontend, backend, database)
+
+## Architecture
+
+### Scraper Flow
+1. `POST /api/scraper/run/` — starts a background thread (idempotent; no-op if already running), returns `{started_at}`
+2. `GET /api/scraper/events/` — SSE stream that replays all past events then follows new ones; safe to reconnect at any time
+3. `GET /api/scraper/status/` — returns `{running, events, started_at}` for reconnect on page refresh
+4. Same pattern for `/api/scraper/rescore/`, `/rescore/events/`, `/rescore/status/`
+
+On page mount the frontend calls both status endpoints and reconnects to any in-progress run, restoring the progress toast with correct elapsed time.
+
+### Scoring
+Claude Haiku returns a breakdown of 5 sub-scores (0–10): `stack_match`, `salary_match`, `role_match`, `work_mode_match`, `contract_match`.
+
+Final score = `sum(weight × sub_score) / sum(weights)` — weighted average using `UserProfile.score_weights` (1=Low / 2=Med / 3=High per criterion).
+
+When the user saves new weights, `_apply_weights()` instantly bulk-rescores all jobs from existing breakdowns — no Claude calls.
+
+### Profile-Aware Scraping
+`_scraper_kwargs(profile)` derives per-platform search params from the user profile:
+- `search` keyword = first preferred role, or first tech, or `"desenvolvedor"`
+- `filter_terms` = preferred_roles + first 5 techs (used as post-filter or server-side filter)
+- Nerdin: maps tech names → `filtro_plataforma[]` IDs for server-side filtering (combining with `filtro_cargo[]` uses AND logic and returns zero results — only platform IDs are used)
+- GeekHunter: fills the search input via Playwright and presses Enter (no URL-level filtering)
+- LinkedIn / Indeed: `keywords=` URL param
+
+### Profile Autofill
+LinkedIn profile pages require authentication — URL scraping is blocked. Instead, the user pastes raw profile text into the UI → `POST /api/profile/autofill/` → Claude Haiku extracts `competencies`, `tech_stack`, `preferred_roles`.
+
+### Description Extraction
+All scrapers use full untruncated text for field detection (contract_type, work_mode, experience_level) and store up to 6000 chars as description. Previously 3000 chars caused these fields to be missed when the relevant text appeared late in long job postings.
 
 ## Behavioral Guidelines
 
