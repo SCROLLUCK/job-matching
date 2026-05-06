@@ -98,20 +98,21 @@ def _extract_salary(description):
 
 
 def _fetch_detail(job_id):
-    """Returns (description, contract_type, salary_min, salary_max, work_mode) from the LinkedIn job posting API."""
+    """Returns (description, contract_type, salary_min, salary_max, work_mode, experience_level)."""
     try:
         numeric_id = job_id.split("-")[-1] if not job_id.isdigit() else job_id
         resp = requests.get(DETAIL_URL.format(job_id=numeric_id), headers=HEADERS, timeout=10)
         if resp.status_code != 200:
-            return "", "unknown", None, None, "unknown"
+            return "", "unknown", None, None, "unknown", "unknown"
         soup = BeautifulSoup(resp.text, "lxml")
         desc = soup.find(class_="show-more-less-html__markup")
-        text = desc.get_text("\n", strip=True)[:3000] if desc else ""
-        salary_min, salary_max = _extract_salary(text)
-        work_mode, _ = _detect_work_mode(text)
-        return text, _detect_contract(text), salary_min, salary_max, work_mode
+        full_text = desc.get_text("\n", strip=True) if desc else ""
+        text = full_text[:6000]
+        salary_min, salary_max = _extract_salary(full_text)
+        work_mode, _ = _detect_work_mode(full_text)
+        return text, _detect_contract(full_text), salary_min, salary_max, work_mode, _detect_level(full_text)
     except Exception:
-        return "", "unknown", None, None, "unknown"
+        return "", "unknown", None, None, "unknown", "unknown"
 
 
 def _parse_item(item):
@@ -168,7 +169,7 @@ def fetch_jobs(keywords="desenvolvedor", location="Brazil", pages=3, filter_term
         for item in items:
             job = _parse_item(item)
             if job:
-                description, contract_type, salary_min, salary_max, work_mode = _fetch_detail(job["external_id"])
+                description, contract_type, salary_min, salary_max, work_mode, level = _fetch_detail(job["external_id"])
                 job["description"] = description
                 if contract_type != "unknown":
                     job["contract_type"] = contract_type
@@ -177,6 +178,8 @@ def fetch_jobs(keywords="desenvolvedor", location="Brazil", pages=3, filter_term
                     job["salary_max"] = salary_max
                 if job["work_mode"] == "unknown" and work_mode != "unknown":
                     job["work_mode"] = work_mode
+                if job["experience_level"] == "unknown" and level != "unknown":
+                    job["experience_level"] = level
                 if description:
                     job["tech_stack"] = _extract_tech_stack(description)
                 jobs.append(job)

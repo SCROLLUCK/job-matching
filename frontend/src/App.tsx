@@ -139,7 +139,7 @@ export default function App() {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                  {jobs.map((job) => <JobCard key={job.id} job={job} />)}
+                  {jobs.map((job) => <JobCard key={job.id} job={job} weights={profile?.score_weights} />)}
                 </div>
               )}
             </div>
@@ -157,7 +157,7 @@ export default function App() {
               <>
                 <p className="text-sm text-gray-500 mb-4">{appliedJobs.length} application{appliedJobs.length !== 1 ? "s" : ""}</p>
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                  {appliedJobs.map((job) => <JobCard key={job.id} job={job} />)}
+                  {appliedJobs.map((job) => <JobCard key={job.id} job={job} weights={profile?.score_weights} />)}
                 </div>
               </>
             )}

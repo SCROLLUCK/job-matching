@@ -167,7 +167,7 @@ def fetch_jobs(keywords="desenvolvedor", location="Brasil", pages=3, filter_term
         html = descriptions.get(stub["external_id"], "")
         if not html:
             continue
-        text = BeautifulSoup(html, "lxml").get_text("\n", strip=True)[:3000]
+        text = BeautifulSoup(html, "lxml").get_text("\n", strip=True)[:6000]
         stub["description"] = text
         stub["tech_stack"] = _extract_tech_stack(text)
 

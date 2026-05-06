@@ -24,7 +24,7 @@ function salaryLabel(min: number | null, max: number | null): string {
   return `a partir de ${fmt(min!)}`;
 }
 
-export default function JobCard({ job }: { job: Job }) {
+export default function JobCard({ job, weights }: { job: Job; weights?: Record<string, number> }) {
   const [status, setStatus] = useState(job.application_status);
 
   async function changeStatus(next: "" | "applied" | "rejected") {
@@ -108,7 +108,7 @@ export default function JobCard({ job }: { job: Job }) {
         <p className="text-xs text-gray-500 leading-relaxed line-clamp-3">{job.description}</p>
       )}
 
-      <ScoreBar score={job.score} breakdown={job.score_breakdown} />
+      <ScoreBar score={job.score} breakdown={job.score_breakdown} weights={weights} />
     </div>
   );
 }

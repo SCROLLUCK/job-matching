@@ -130,7 +130,7 @@ def _fetch_detail(url):
         for marker in ["Sobre a Vaga", "Descrição da vaga", "Descrição"]:
             idx = full_text.find(marker)
             if idx != -1:
-                result["description"] = full_text[idx:idx + 3000].strip()
+                result["description"] = full_text[idx:idx + 6000].strip()
                 break
 
         result["contract_type"] = _detect_contract(full_text)

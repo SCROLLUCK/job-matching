@@ -85,6 +85,7 @@ def _parse_detail_page(text):
     salary_min = salary_max = None
     level = "unknown"
     description = ""
+    full_text = " ".join(lines)
 
     for i, line in enumerate(lines[5:], start=5):
         if "Faixa de Remuneração" in line:
@@ -97,10 +98,15 @@ def _parse_detail_page(text):
         elif "Nível de Experiência" in line and i + 1 < len(lines):
             level = _detect_level(lines[i + 1])
         elif any(m in line for m in ["Tarefas e Responsabilidades", "Requisitos", "Sobre a ", "Descrição"]):
-            description = " ".join(lines[i:])[:3000]
+            description = " ".join(lines[i:])[:6000]
             break
 
-    contract_type = _detect_contract(description + " " + title)
+    # Fallback: scan full text for fields not found in structured headers
+    if level == "unknown":
+        level = _detect_level(full_text)
+    if work_mode == "unknown":
+        work_mode = _detect_work_mode(full_text)
+    contract_type = _detect_contract(full_text)  # always use full text, not truncated description
 
     return {
         "title": title,
