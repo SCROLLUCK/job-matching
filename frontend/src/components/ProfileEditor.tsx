@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { UserProfile, saveProfile, rescoreJobs, autofillProfile } from "../api";
+import { UserProfile, saveProfile, autofillProfile } from "../api";
 import TagInput from "./TagInput";
 import MultiSelect from "./MultiSelect";
 
@@ -53,15 +53,13 @@ interface Props {
   profile: UserProfile;
   onSaved: (p: UserProfile) => void;
   showToast: (message: string, type: "success" | "error") => void;
-  startProgress: (label: string) => void;
-  updateProgress: (detail: string) => void;
-  stopProgress: () => void;
+  onRescore: () => void;
+  rescoring: boolean;
 }
 
-export default function ProfileEditor({ profile, onSaved, showToast, startProgress, updateProgress, stopProgress }: Props) {
+export default function ProfileEditor({ profile, onSaved, showToast, onRescore, rescoring }: Props) {
   const [form, setForm] = useState(profile);
   const [saving, setSaving] = useState(false);
-  const [rescoring, setRescoring] = useState(false);
   const [pasteText, setPasteText] = useState("");
   const [showPaste, setShowPaste] = useState(false);
   const [autofilling, setAutofilling] = useState(false);
@@ -120,25 +118,6 @@ export default function ProfileEditor({ profile, onSaved, showToast, startProgre
     }
   }
 
-  async function handleRescore() {
-    setRescoring(true);
-    startProgress("Re-scoring");
-    try {
-      await rescoreJobs((event) => {
-        if (event.type === "complete") {
-          stopProgress();
-          showToast(`Re-scored ${event.updated} jobs`, "success");
-        } else if (event.processed !== undefined) {
-          updateProgress(`${event.processed} / ${event.total} jobs`);
-        }
-      });
-    } catch {
-      stopProgress();
-      showToast("Failed to re-score jobs", "error");
-    } finally {
-      setRescoring(false);
-    }
-  }
 
   return (
     <div className="space-y-4">
@@ -146,7 +125,7 @@ export default function ProfileEditor({ profile, onSaved, showToast, startProgre
         <h2 className="text-base font-semibold text-gray-800">Your Profile</h2>
         <div className="flex items-center gap-2">
           <button
-            onClick={handleRescore}
+            onClick={onRescore}
             disabled={rescoring}
             className="bg-gray-100 hover:bg-gray-200 disabled:opacity-50 text-gray-700 text-sm font-medium px-4 py-1.5 rounded-lg transition-colors"
           >

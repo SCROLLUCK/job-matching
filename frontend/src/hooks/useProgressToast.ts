@@ -20,10 +20,10 @@ export function useProgressToast() {
     showToast(`${labelRef.current}${detail} · ${fmtElapsed(elapsed)}`, "loading");
   }, [showToast]);
 
-  const startProgress = useCallback((label: string) => {
+  const startProgress = useCallback((label: string, startTime?: number) => {
     labelRef.current = label;
     detailRef.current = "";
-    startRef.current = Date.now();
+    startRef.current = startTime ?? Date.now();
     showToast(`${label} · 0s`, "loading");
     timerRef.current = setInterval(_show, 1000);
   }, [showToast, _show]);

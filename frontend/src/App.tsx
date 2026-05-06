@@ -1,5 +1,10 @@
 import { useEffect, useState } from "react";
-import { Job, UserProfile, JobFilters, fetchJobs, fetchProfile, runScrape } from "./api";
+import {
+  Job, UserProfile, JobFilters,
+  fetchJobs, fetchProfile,
+  startScrape, connectScrapeEvents, getScrapeStatus,
+  startRescore, connectRescoreEvents, getRescoreStatus,
+} from "./api";
 import JobCard from "./components/JobCard";
 import FilterDrawer from "./components/FilterDrawer";
 import ProfileEditor from "./components/ProfileEditor";
@@ -17,6 +22,7 @@ export default function App() {
   const [tab, setTab] = useState<Tab>("jobs");
   const [loading, setLoading] = useState(false);
   const [scraping, setScraping] = useState(false);
+  const [rescoring, setRescoring] = useState(false);
   const { toast, showToast, clearToast, startProgress, updateProgress, stopProgress } = useProgressToast();
 
   const profileFilled = profile !== null && (profile.competencies.trim().length > 0 || profile.tech_stack.length > 0);
@@ -26,6 +32,27 @@ export default function App() {
   useEffect(() => {
     fetchProfile().then(setProfile);
     refreshApplied();
+    getScrapeStatus().then(({ running, events, started_at }) => {
+      if (!running || !started_at) return;
+      const counts: Record<string, number> = {};
+      for (const e of events) {
+        if (e.type === "source_done") counts[e.source as string] = e.count as number;
+      }
+      setScraping(true);
+      startProgress("Scraping", new Date(started_at).getTime());
+      if (Object.keys(counts).length > 0) {
+        updateProgress(Object.entries(counts).map(([s, n]) => `${s} +${n}`).join(" · "));
+      }
+      streamScrapeEvents(counts);
+    });
+    getRescoreStatus().then(({ running, events, started_at }) => {
+      if (!running || !started_at) return;
+      const latest = [...events].reverse().find((e) => e.processed !== undefined);
+      setRescoring(true);
+      startProgress("Re-scoring", new Date(started_at).getTime());
+      if (latest) updateProgress(`${latest.processed} / ${latest.total} jobs`);
+      streamRescoreEvents();
+    });
   }, []);
 
   useEffect(() => {
@@ -40,22 +67,17 @@ export default function App() {
     if (tab === "applied") refreshApplied();
   }, [tab]);
 
-  async function handleScrape() {
-    setScraping(true);
-    startProgress("Scraping");
-    const counts: Record<string, number> = {};
+  async function streamScrapeEvents(counts: Record<string, number>) {
     try {
-      await runScrape((event) => {
+      await connectScrapeEvents((event) => {
         if (event.type === "source_done") {
           counts[event.source as string] = event.count as number;
-          const detail = Object.entries(counts).map(([s, n]) => `${s} +${n}`).join(" · ");
-          updateProgress(detail);
+          updateProgress(Object.entries(counts).map(([s, n]) => `${s} +${n}`).join(" · "));
         } else if (event.type === "source_start") {
-          const pending = [
+          updateProgress([
             ...Object.entries(counts).map(([s, n]) => `${s} +${n}`),
             `${event.source}…`,
-          ].join(" · ");
-          updateProgress(pending);
+          ].join(" · "));
         } else if (event.type === "complete") {
           stopProgress();
           const hasErrors = Object.keys(event).some((k) => k.includes("error"));
@@ -73,6 +95,43 @@ export default function App() {
     } finally {
       setScraping(false);
     }
+  }
+
+  async function handleScrape() {
+    setScraping(true);
+    const { started_at } = await startScrape();
+    startProgress("Scraping", new Date(started_at).getTime());
+    await streamScrapeEvents({});
+  }
+
+  async function streamRescoreEvents() {
+    try {
+      await connectRescoreEvents((event) => {
+        if (event.type === "complete") {
+          stopProgress();
+          showToast(`Re-scored ${event.updated} jobs`, "success");
+        } else if (event.processed !== undefined) {
+          updateProgress(`${event.processed} / ${event.total} jobs`);
+        }
+      });
+    } catch {
+      stopProgress();
+      showToast("Failed to re-score jobs", "error");
+    } finally {
+      setRescoring(false);
+    }
+  }
+
+  async function handleRescore() {
+    setRescoring(true);
+    const result = await startRescore();
+    if ("error" in result) {
+      setRescoring(false);
+      showToast(result.error, "error");
+      return;
+    }
+    startProgress("Re-scoring", new Date(result.started_at).getTime());
+    await streamRescoreEvents();
   }
 
   return (
@@ -172,9 +231,8 @@ export default function App() {
               profile={profile}
               onSaved={setProfile}
               showToast={showToast}
-              startProgress={startProgress}
-              updateProgress={updateProgress}
-              stopProgress={stopProgress}
+              onRescore={handleRescore}
+              rescoring={rescoring}
             />
           </div>
         )}

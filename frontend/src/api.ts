@@ -117,23 +117,48 @@ async function readSSE(res: Response, onEvent: (data: Record<string, unknown>) =
   }
 }
 
-export async function runScrape(
-  onEvent: (data: Record<string, unknown>) => void,
-  sources?: string[],
-): Promise<void> {
+export interface TaskStatus {
+  running: boolean;
+  events: Record<string, unknown>[];
+  started_at: string | null;
+}
+
+export async function startScrape(sources?: string[]): Promise<{ started_at: string }> {
   const res = await fetch(`${BASE}/api/scraper/run/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(sources ? { sources } : {}),
   });
+  return res.json();
+}
+
+export async function connectScrapeEvents(
+  onEvent: (data: Record<string, unknown>) => void,
+): Promise<void> {
+  const res = await fetch(`${BASE}/api/scraper/events/`);
   await readSSE(res, onEvent);
 }
 
-export async function rescoreJobs(
+export async function getScrapeStatus(): Promise<TaskStatus> {
+  const res = await fetch(`${BASE}/api/scraper/status/`);
+  return res.json();
+}
+
+export async function startRescore(): Promise<{ started_at: string } | { error: string }> {
+  const res = await fetch(`${BASE}/api/scraper/rescore/`, { method: "POST" });
+  return res.json();
+}
+
+export async function connectRescoreEvents(
   onEvent: (data: Record<string, unknown>) => void,
 ): Promise<void> {
-  const res = await fetch(`${BASE}/api/scraper/rescore/`, { method: "POST" });
+  const res = await fetch(`${BASE}/api/scraper/rescore/events/`);
   await readSSE(res, onEvent);
+}
+
+export async function getRescoreStatus(): Promise<TaskStatus> {
+  const res = await fetch(`${BASE}/api/scraper/rescore/status/`);
+  return res.json();
 }
 
 export interface JobStats {
